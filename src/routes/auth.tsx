@@ -5,6 +5,9 @@ import { AuthScreen } from "@/components/auth/AuthScreen";
 import { resolvePostAuthDestination } from "@/lib/auth-destination";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    next: typeof search.next === "string" ? search.next : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Entrar — Guia Orquídeas Floridas" },
@@ -17,9 +20,10 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
 
   async function resolveDestination(userId: string) {
-    return resolvePostAuthDestination(userId);
+    return resolvePostAuthDestination(userId, { explicitRedirect: next });
   }
 
   useEffect(() => {
@@ -39,10 +43,11 @@ function AuthPage() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, next]);
 
   return (
     <AuthScreen
+      next={next}
       onBack={() => navigate({ to: "/", replace: true })}
       onSuccess={async () => {
         const { data } = await supabase.auth.getSession();
