@@ -12,9 +12,19 @@ type Feedback = {
 interface AuthScreenProps {
   onBack: () => void;
   onSuccess: (context?: { isNewSignup?: boolean }) => void;
+  next?: string;
 }
 
-export function AuthScreen({ onBack, onSuccess }: AuthScreenProps) {
+function isSameOriginRelativePath(path: string): boolean {
+  try {
+    const url = new URL(path, window.location.origin);
+    return url.origin === window.location.origin && url.pathname.startsWith("/");
+  } catch {
+    return false;
+  }
+}
+
+export function AuthScreen({ onBack, onSuccess, next }: AuthScreenProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
