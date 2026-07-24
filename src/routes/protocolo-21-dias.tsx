@@ -101,13 +101,11 @@ import {
   saveMigrationRecord, 
   saveToCache 
 } from "@/lib/protocol-cache";
-import { saveProgressRemote } from "@/lib/protocol-cloud";
+import { saveProfileRemote, saveProgressRemote } from "@/lib/protocol-cloud";
 import welcomeOrchid from "@/assets/welcome-orchid.jpg";
 import kitMetodo from "@/assets/kit-metodo-app.jpg";
-import { QuickTour } from "@/components/QuickTour";
 import { exportProtocolPDF, previewProtocolPDF, protocolPdfFilename } from "@/lib/pdf-export";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
-import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 
 
 
@@ -188,23 +186,6 @@ export function ProtocoloShell({ initialTab }: { initialTab?: Tab } = {}) {
     }
   };
 
-  // Retomar automaticamente para a aba correta quando o status mudar para ready
-  useEffect(() => {
-    if (hasInitialTab) return;
-    if (status === "ready" || (status === "signed_out" && isGuestActive())) {
-      const state = getState();
-      if (!state.onboarded) {
-        setStatus("onboarding");
-      }
-    }
-    if (status === "onboarding") {
-      const state = getState();
-      if (state.onboarded) {
-        setStatus("ready");
-      }
-    }
-  }, [status, hasInitialTab]);
-
   const [guestMode, setGuestMode] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [showLegacyDialog, setShowLegacyDialog] = useState(false);
@@ -212,17 +193,18 @@ export function ProtocoloShell({ initialTab }: { initialTab?: Tab } = {}) {
   const actorId = user?.id ?? "guest";
 
   useEffect(() => {
-    // Modo visitante persistente OU navegação direta para uma aba específica
+    // O modo visitante só continua ativo quando foi escolhido explicitamente.
+    // Acesso direto às páginas internas sem sessão segue para o login.
     if (status === "signed_out") {
       if (isGuestActive()) {
         setGuestMode(true);
       } else if (hasInitialTab) {
-        // Usuário entrou por deep link em uma aba: ativa visitante para não bloquear com Welcome
-        setGuestActive(true);
-        setGuestMode(true);
+        navigate({ to: "/auth", replace: true });
       }
+    } else {
+      setGuestMode(false);
     }
-  }, [status, hasInitialTab]);
+  }, [status, hasInitialTab, navigate]);
 
 
   useEffect(() => {
@@ -400,30 +382,19 @@ export function ProtocoloShell({ initialTab }: { initialTab?: Tab } = {}) {
           >
             <DiagnosisResultScreen
               actorId={actorId}
-              onBack={() => setStatus("needs_diagnosis")}
-              onFinish={() => {
+              onBack={() => setStatus("diagnosing")}
+              onFinish={async () => {
                 store.setOnboarded(true, actorId);
+                if (actorId !== "guest") {
+                  const { error } = await saveProfileRemote(actorId, { onboarded: true });
+                  if (error) {
+                    toast.warning("Resultado salvo neste aparelho", {
+                      description: "A sincronização da conclusão será tentada novamente depois.",
+                    });
+                  }
+                }
                 setStatus("ready");
-                // Fluxo automático: levar diretamente para o Plano (onde está a tarefa do dia)
-                setTab("plano");
-              }}
-            />
-          </motion.div>
-        )}
-
-        {status === "onboarding" && (
-          <motion.div
-            key="onboarding"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-background"
-          >
-            <OnboardingFlow
-              actorId={actorId}
-              onFinish={() => {
-                setStatus("ready");
-                setTab("plano");
+                setTab("inicio");
               }}
             />
           </motion.div>
@@ -638,7 +609,6 @@ function AppShell({
           </div>
         )}
 
-        <QuickTour actorId={actorId} />
         <main className="flex-1 overflow-y-auto px-4 pb-28 pt-4">
           <div className="relative space-y-6">
             {tab === "inicio" && userEmail && (
@@ -1359,7 +1329,7 @@ function DiagnosisResultScreen({ actorId, onBack, onFinish }: { actorId: string;
               onClick={onFinish}
               className="ml-auto flex items-center gap-1 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              Ir para meu plano <ChevronRight size={16} />
+              Ver meu acompanhamento <ChevronRight size={16} />
             </button>
           )}
         </div>
@@ -1860,7 +1830,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
     });
     // O foco e scroll serão tratados pelo useEffect na PlanoTab
   };
-  const { state, setCurrentDay, toggleReminder, updateSettings, updateDay } = useProtocolStore();
+  const { state, setCurrentDay, updateSettings, updateDay } = useProtocolStore();
   
   const playInteractionSound = () => {
     if (state.settings?.muteSounds) return;
@@ -1923,6 +1893,34 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
   const isApplicationDay = APPLICATION_DAYS.includes(day);
   const diagnosisFresh = isDiagnosisCurrent(state);
   const hasPlant = !!state.plant.name?.trim();
+  const journeyReady = hasPlant && diagnosisFresh && state.onboarded;
+
+  const initialFlowCard = !hasPlant
+    ? {
+        step: 1,
+        title: "Cadastre sua orquídea",
+        description: "Conte sobre sua planta para iniciarmos um acompanhamento realmente personalizado.",
+        action: "Começar cadastro e diagnóstico",
+        icon: <Plus size={20} />,
+        open: () => setStatus("needs_diagnosis"),
+      }
+    : !diagnosisFresh
+      ? {
+          step: 2,
+          title: "Faça o diagnóstico guiado",
+          description: "O cadastro está pronto. Agora observe cinco áreas para gerar as recomendações da sua planta.",
+          action: "Continuar diagnóstico",
+          icon: <Stethoscope size={20} />,
+          open: () => setStatus("diagnosing"),
+        }
+      : {
+          step: 3,
+          title: "Veja seu resultado personalizado",
+          description: "Suas respostas já foram analisadas. Confira o resultado para liberar o acompanhamento de 21 dias.",
+          action: "Ver meu resultado",
+          icon: <CheckCircle2 size={20} />,
+          open: () => setStatus("reviewing_diagnosis_result"),
+        };
 
   // Mantém state.currentDay sincronizado com o foco real do usuário
   // para que ao abrir o plano ele já esteja no dia correto.
@@ -1940,10 +1938,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
   const totalNotes = Object.values(state.days).filter((d) => d.note?.trim()).length;
   const totalPhotos = Object.values(state.days).filter((d) => d.photo).length;
 
-  const reminderDays = [1, 3, 7, 10, 14, 17, 21];
-  const upcomingReminders = reminderDays.filter(d => d >= day && !state.remindersCompleted?.[d]);
-
-  // Dados para o "Resumo do dia" e "Lembretes importantes"
+  // Dados para o "Resumo do dia" e "Próximos cuidados"
   const todayEntry = state.days[day] ?? { checklist: {}, note: "", completed: false };
   const todayMeta = getProtocolDay(day);
   const totalTasks = todayMeta.checklist.length;
@@ -1953,6 +1948,80 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
   const appsDoneToday = state.applications.filter((a) => a.day === day).length;
   const hasPendencies = doneTasks < totalTasks || !noteDone || !photoDone;
   const dayFullyDone = isDayFullyDone(state, day, todayMeta.checklist);
+
+  const pendingCareLabels = [
+    ...(doneTasks < totalTasks
+      ? [`${totalTasks - doneTasks} ${totalTasks - doneTasks === 1 ? "tarefa" : "tarefas"}`]
+      : []),
+    ...(isApplicationDay && !todayEntry.applicationDone ? ["aplicação"] : []),
+    ...(todayMeta.requiresPhoto && !photoDone ? ["foto de acompanhamento"] : []),
+  ];
+
+  const formatCareList = (items: string[]) => {
+    if (items.length <= 1) return items[0] ?? "";
+    return `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
+  };
+
+  const milestoneDay = [3, 7, 10, 14, 17, 21].find((candidate) => candidate > day);
+  const milestoneMeta = milestoneDay ? getProtocolDay(milestoneDay) : null;
+  const diagnosisGuidance = diagnosisFresh
+    ? state.diagnosisResult?.priorities[0] ?? state.diagnosisResult?.adjustments[0]
+    : undefined;
+  const diagnosisFocusDay = diagnosisGuidance
+    ? getFocusDays([diagnosisGuidance.category]).find((candidate) => candidate >= day) ?? day
+    : day;
+
+  type NextCareItem = {
+    id: string;
+    label: string;
+    title: string;
+    description: string;
+    icon: ReactNode;
+    onClick: () => void;
+    highlighted?: boolean;
+  };
+
+  const nextCareItems: NextCareItem[] = [];
+
+  if (pendingCareLabels.length > 0) {
+    nextCareItems.push({
+      id: `today-${day}`,
+      label: "Hoje",
+      title: `Conclua os cuidados do Dia ${day}`,
+      description: `Ainda falta ${formatCareList(pendingCareLabels)}.`,
+      icon: <CheckSquare size={17} />,
+      highlighted: true,
+      onClick: handleRedirectToPlan,
+    });
+  }
+
+  if (milestoneDay && milestoneMeta) {
+    nextCareItems.push({
+      id: `milestone-${milestoneDay}`,
+      label: `Próximo marco · Dia ${milestoneDay}`,
+      title: milestoneMeta.title,
+      description: milestoneMeta.mainAction,
+      icon: <CalendarCheck size={17} />,
+      onClick: () => {
+        setCurrentDay(milestoneDay, actorId);
+        handleRedirectToPlan();
+      },
+    });
+  }
+
+  if (diagnosisGuidance) {
+    nextCareItems.push({
+      id: `diagnosis-${diagnosisGuidance.category}`,
+      label: `Diagnóstico · ${CATEGORY_LABEL[diagnosisGuidance.category]}`,
+      title: diagnosisGuidance.title,
+      description: diagnosisGuidance.action,
+      icon: <Stethoscope size={17} />,
+      onClick: () => {
+        setCurrentDay(diagnosisFocusDay, actorId);
+        handleRedirectToPlan();
+      },
+    });
+  }
 
   const handleCompleteDay = () => {
     playInteractionSound();
@@ -1973,79 +2042,64 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
       duration: 4000,
     });
   };
-  const importantDays = [3, 7, 10, 14, 17, 21].filter((d) => d >= day);
   const reminderTime = state.settings?.reminderTime ?? "08:00";
 
   return (
     <div className="space-y-4">
-      {/* Mantém o próximo passo no topo enquanto o cadastro ou o diagnóstico estiver pendente. */}
-      {(!hasPlant || !diagnosisFresh) && (() => {
-        const isMissingPlant = !hasPlant;
-
-        return (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => {
-                playInteractionSound();
-                if (isMissingPlant) {
-                  setTab("orquidea");
-                } else {
-                  setStatus("needs_diagnosis");
-                }
-              }}
-              onKeyDown={(e) => { 
-                if (e.key === "Enter" || e.key === " ") {
-                  playInteractionSound();
-                  if (isMissingPlant) {
-                    setTab("orquidea");
-                  } else {
-                    setStatus("needs_diagnosis");
-                  }
-                }
-              }}
-              className="group relative w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-accent bg-gradient-to-br from-accent/20 via-accent/5 to-transparent p-6 text-left shadow-lg shadow-accent/10 transition-all active:scale-[0.99]"
-            >
-              <div className="relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-accent">
-                    <Sparkles size={16} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Próximo passo: O que fazer agora</span>
-                  </div>
-                  <ChevronRight size={20} className="text-accent/60 transition-transform group-hover:translate-x-1" />
-                </div>
-                <h3 className="mt-3 font-display text-2xl leading-tight text-primary">
-                  {isMissingPlant 
-                    ? "Cadastre sua orquídea e faça o diagnóstico" 
-                    : "Finalize o diagnóstico da sua orquídea"}
-                </h3>
-                <p className="mt-2 text-sm text-primary/75">
-                  {isMissingPlant 
-                    ? "Para gerar seu plano de 21 dias, precisamos primeiro conhecer sua planta e o estado dela."
-                    : "Você já cadastrou sua orquídea! Agora falta pouco para receber seu plano personalizado."}
-                </p>
-                <div className="mt-5 flex items-center gap-3">
-                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform group-hover:scale-110">
-                     {isMissingPlant ? <Plus size={20} /> : <Stethoscope size={20} />}
-                   </div>
-                   <span className="font-bold text-primary group-hover:underline">
-                     {isMissingPlant ? "Cadastrar orquídea agora" : "Continuar para o diagnóstico"}
-                   </span>
-                </div>
+      {/* Entrada única e retomável do cadastro, diagnóstico e resultado. */}
+      {!journeyReady && (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            playInteractionSound();
+            initialFlowCard.open();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              playInteractionSound();
+              initialFlowCard.open();
+            }
+          }}
+          className="group relative w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-accent bg-gradient-to-br from-accent/20 via-accent/5 to-transparent p-6 text-left shadow-lg shadow-accent/10 transition-all active:scale-[0.99]"
+        >
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-accent">
+                <Sparkles size={16} />
+                <span className="text-[10px] font-bold uppercase tracking-widest">
+                  Passo {initialFlowCard.step} de 3 · Seu próximo passo
+                </span>
               </div>
-              {/* Efeito visual de destaque */}
-              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/10 blur-2xl transition-all group-hover:bg-accent/20" />
+              <ChevronRight size={20} className="text-accent/60 transition-transform group-hover:translate-x-1" />
             </div>
-        );
-      })()}
+            <h3 className="mt-3 font-display text-2xl leading-tight text-primary">
+              {initialFlowCard.title}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-primary/75">
+              {initialFlowCard.description}
+            </p>
+            <div className="mt-5 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform group-hover:scale-110">
+                {initialFlowCard.icon}
+              </div>
+              <span className="font-bold text-primary group-hover:underline">
+                {initialFlowCard.action}
+              </span>
+            </div>
+          </div>
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/10 blur-2xl transition-all group-hover:bg-accent/20" />
+        </div>
+      )}
 
-
-
+      {journeyReady && (
+        <>
       <div className="flex items-center justify-between px-1">
         <SectionHeader
-          eyebrow="Resgate"
-          title="O que fazer agora"
-          subtitle={focusedMode ? "Visualização concentrada ativa" : "Seu plano guiado passo a passo"}
+          eyebrow={`Dia ${day} de 21`}
+          title="Seu próximo cuidado"
+          subtitle="Siga a recomendação de hoje e avance no seu plano."
         />
         <button
           onClick={() => {
@@ -2299,9 +2353,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
       })()}
 
 
-      {!focusedMode && (
-        <>
-          <div className="group relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/15 via-primary/8 to-primary/[0.03] shadow-lg shadow-primary/10 transition-all hover:border-primary/60 hover:shadow-primary/20">
+      <div className="group relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/15 via-primary/8 to-primary/[0.03] shadow-lg shadow-primary/10 transition-all hover:border-primary/60 hover:shadow-primary/20">
             <div className="relative w-full overflow-hidden">
               <img
                 src={kitMetodo}
@@ -2336,12 +2388,15 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                 </button>
               </div>
             </div>
-          </div>
+      </div>
 
+      {!focusedMode && (
+        <>
           <SectionHeader
-            eyebrow="Bloco 2"
-            title="Progresso"
-            hint="Onde você está na jornada"
+            eyebrow="Acompanhamento"
+            title="Sua evolução em 21 dias"
+            subtitle="Veja o que já foi concluído e acompanhe os próximos passos."
+            nowrapTitle
           />
 
           <div 
@@ -2398,52 +2453,63 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
             </div>
           </div>
 
-          {/* Lembretes importantes */}
-          {importantDays.length > 0 && (
+          {/* Cuidados híbridos: pendências reais, próximo marco e diagnóstico. */}
+          {nextCareItems.length > 0 && (
             <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-primary">
-                  <Bell size={14} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest">Lembretes importantes</span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-primary">
+                    <Bell size={14} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Próximos cuidados</span>
+                  </div>
+                  <h3 className="mt-2 font-display text-xl leading-tight text-primary">
+                    O que merece sua atenção agora
+                  </h3>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    Selecionamos as próximas ações com base no seu plano e diagnóstico.
+                  </p>
                 </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {importantDays.filter((d) => !state.remindersCompleted?.[d]).length} pendente(s)
+                <span className="shrink-0 pt-0.5 text-[10px] text-muted-foreground">
+                  {nextCareItems.length} {nextCareItems.length === 1 ? "prioridade" : "prioridades"}
                 </span>
               </div>
               <div className="mt-3 space-y-2">
-                {importantDays.slice(0, 4).map((d) => {
-                  const done = !!state.remindersCompleted?.[d];
-                  const meta = getProtocolDay(d);
-                  return (
+                {nextCareItems.slice(0, 3).map((care) => (
+                  <button
+                    key={care.id}
+                    onClick={care.onClick}
+                    className={cn(
+                      "group/care flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all active:scale-[0.99]",
+                      care.highlighted
+                        ? "border-accent/30 bg-accent/[0.07] hover:bg-accent/10"
+                        : "border-border/60 bg-background hover:border-primary/20 hover:bg-primary/[0.03]",
+                    )}
+                  >
                     <div
-                      key={d}
-                      className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3"
+                      className={cn(
+                        "grid h-10 w-10 shrink-0 place-items-center rounded-lg",
+                        care.highlighted ? "bg-accent/15 text-accent" : "bg-primary/[0.06] text-primary",
+                      )}
                     >
-                      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/[0.06] font-display text-lg text-primary">
-                        {d}
-                      </div>
-                      <button
-                        onClick={() => { setCurrentDay(d, actorId); handleRedirectToPlan(); }}
-                        className="min-w-0 flex-1 text-left"
-                      >
-                        <div className="truncate font-display text-base text-primary">
-                          Dia {d}: {meta.title}
-                        </div>
-                        <div className="text-xs text-muted-foreground">Toque para abrir este dia</div>
-                      </button>
-                      <button
-                        onClick={() => toggleReminder(d, actorId)}
-                        aria-label={done ? "Desmarcar lembrete" : "Marcar lembrete como concluído"}
-                        className={cn(
-                          "grid h-9 w-9 shrink-0 place-items-center rounded-lg transition-all",
-                          done ? "bg-primary text-primary-foreground" : "bg-primary/[0.06] text-primary hover:bg-primary/10"
-                        )}
-                      >
-                        <Check size={16} />
-                      </button>
+                      {care.icon}
                     </div>
-                  );
-                })}
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                        {care.label}
+                      </div>
+                      <div className="mt-0.5 font-display text-base leading-tight text-primary">
+                        {care.title}
+                      </div>
+                      <div className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        {care.description}
+                      </div>
+                    </div>
+                    <ChevronRight
+                      size={16}
+                      className="shrink-0 text-primary/35 transition-transform group-hover/care:translate-x-0.5"
+                    />
+                  </button>
+                ))}
               </div>
             </div>
           )}
@@ -2586,24 +2652,6 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
             </div>
           </div>
 
-          <InfoCard tone="warn" icon={<AlertTriangle size={16} />}>
-            Aplique no horário fresco, evite sol forte e não atinja diretamente as flores.
-          </InfoCard>
-
-          <button
-            onClick={() => setTab("resumo")}
-            className="mt-6 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left transition-all hover:bg-primary/10"
-          >
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/20 text-primary">
-              <FileText size={20} />
-            </div>
-            <div className="flex-1">
-              <div className="text-sm font-bold text-primary">Resumo & PDF</div>
-              <div className="text-[10px] text-muted-foreground">Exportar meu progresso</div>
-            </div>
-            <ChevronRight size={16} className="text-primary/40" />
-          </button>
-
           <div className="mt-3 flex flex-col items-center gap-2">
             <button
               onClick={handleRedirectToPlan}
@@ -2616,6 +2664,8 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               Você está no <span className="font-bold text-accent">Dia {day}</span>: {getProtocolDay(day).title}
             </span>
           </div>
+        </>
+      )}
         </>
       )}
     </div>
@@ -2659,12 +2709,14 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
 
   const day = state.currentDay;
   const [showMethod, setShowMethod] = useState(false);
-  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showIncompleteConfirmation, setShowIncompleteConfirmation] = useState(false);
   const meta = getProtocolDay(day);
   const entry = state.days[day] ?? { checklist: {}, note: "", completed: false };
   const isApplication = APPLICATION_DAYS.includes(day);
   const trackingPoints = state.diagnosisResult?.trackingPoints ?? [];
   const diagnosisFresh = isDiagnosisCurrent(state);
+  const completedChecklistCount = meta.checklist.filter((item) => !!entry.checklist[item]).length;
+  const pendingChecklistCount = meta.checklist.length - completedChecklistCount;
 
   const week = useMemo(() => getWeekForDay(day), [day]);
   const activeWeek = WEEKS.find((w) => w.id === week) ?? WEEKS[0];
@@ -2674,6 +2726,48 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
   );
   const focusDaysSet = useMemo(() => new Set(getFocusDays(focusCategories)), [focusCategories]);
   const isFocusDay = focusDaysSet.has(day);
+
+  useEffect(() => {
+    setShowIncompleteConfirmation(false);
+  }, [day]);
+
+  const completeCurrentDay = () => {
+    if (entry.completed) return;
+
+    toggleDayCompleted(day, actorId);
+    setShowIncompleteConfirmation(false);
+    playSuccessSound();
+
+    if ([7, 14, 21].includes(day)) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ["#D35400", "#155F4E", "#F8F5EE", "#FDF2F8"],
+      });
+      toast.success(
+        day === 7
+          ? "Fase 1 concluída!"
+          : day === 14
+          ? "Fase 2 concluída!"
+          : "Protocolo concluído!",
+      );
+    } else {
+      toast.success(`Dia ${day} concluído!`);
+    }
+  };
+
+  const goToNextDay = () => {
+    if (day >= 21) {
+      setTab("resumo");
+      return;
+    }
+
+    setCurrentDay(day + 1, actorId);
+    window.setTimeout(() => {
+      containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
 
   return (
     <div ref={containerRef} className="space-y-4">
@@ -2849,75 +2943,100 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
           onCaption={(photoCaption) => updateDay(day, { photoCaption }, actorId)}
         />
 
-        <button
-          onClick={() => {
-            if (entry.completed) {
-              toggleDayCompleted(day, actorId);
-            } else {
-              setShowCompleteModal(true);
-            }
-          }}
-          aria-pressed={entry.completed}
-          className={`mt-4 w-full rounded-full px-4 py-3 text-sm font-semibold active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-            entry.completed
-              ? "bg-secondary text-secondary-foreground"
-              : "bg-primary text-primary-foreground"
-          }`}
-        >
-          {entry.completed ? "Tarefa concluída ✓ · Desmarcar" : "Concluir dia"}
-        </button>
-
-        {showCompleteModal && (
-          <DayCompleteModal
-            day={day}
-            meta={meta}
-            entry={entry}
-            applicationsForDay={state.applications.filter((a) => a.day === day).length}
-            canAdvance={day < 21}
-            onCancel={() => setShowCompleteModal(false)}
-            onConfirm={(advance) => {
-              toggleDayCompleted(day, actorId);
-              playSuccessSound();
-              if ([7, 14, 21].includes(day)) {
-                confetti({
-                  particleCount: 150,
-                  spread: 70,
-                  origin: { y: 0.6 },
-                  colors: ["#D35400", "#155F4E", "#F8F5EE", "#FDF2F8"],
-                });
-                toast.success(
-                  day === 7
-                    ? "Fase 1 Concluída!"
-                    : day === 14
-                    ? "Fase 2 Concluída!"
-                    : "Protocolo Concluído!"
-                );
-              } else {
-                toast.success(`Dia ${day} concluído!`);
+        {!entry.completed && (
+          <button
+            onClick={() => {
+              if (pendingChecklistCount > 0) {
+                setShowIncompleteConfirmation(true);
+                return;
               }
-              setShowCompleteModal(false);
-              if (advance && day < 21) {
-                setCurrentDay(day + 1, actorId);
-              }
+              completeCurrentDay();
             }}
-          />
+            className="mt-4 w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            Concluir dia
+          </button>
+        )}
+
+        {!entry.completed && showIncompleteConfirmation && (
+          <div
+            role="alert"
+            className="mt-3 animate-in fade-in slide-in-from-top-2 rounded-2xl border border-accent/30 bg-accent/[0.07] p-4 duration-300"
+          >
+            <div className="flex items-start gap-3">
+              <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent/15 text-accent">
+                <AlertTriangle size={17} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display text-lg leading-tight text-primary">
+                  Ainda {pendingChecklistCount === 1 ? "há 1 tarefa pendente" : `há ${pendingChecklistCount} tarefas pendentes`}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Você pode continuar preenchendo o checklist ou concluir o dia mesmo assim.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button
+                onClick={() => setShowIncompleteConfirmation(false)}
+                className="rounded-full border border-primary/20 bg-card px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
+              >
+                Continuar preenchendo
+              </button>
+              <button
+                onClick={completeCurrentDay}
+                className="rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
+              >
+                Concluir mesmo assim
+              </button>
+            </div>
+          </div>
         )}
 
         {entry.completed && (
-          <div className="mt-3 grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="mt-4 animate-in fade-in slide-in-from-top-2 rounded-2xl border border-primary/25 bg-primary/[0.05] p-4 duration-300">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+                <CheckCircle2 size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-display text-xl leading-tight text-primary">
+                  {day === 21 ? "Protocolo concluído!" : `Dia ${day} concluído!`}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {day === 7
+                    ? "Você concluiu a primeira fase. Seu progresso foi salvo."
+                    : day === 14
+                    ? "Você concluiu a segunda fase. Seu progresso foi salvo."
+                    : day === 21
+                    ? "Seu progresso foi salvo. Agora veja o resultado da sua jornada."
+                    : "Seu progresso foi salvo. Continue quando estiver pronto."}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <button
+                onClick={goToNextDay}
+                className="flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
+              >
+                {day === 21 ? "Ver meu resultado final" : `Ir para o Dia ${day + 1}`}
+                <ChevronRight size={15} />
+              </button>
+              <button
+                onClick={() => setTab("inicio")}
+                className="flex items-center justify-center gap-2 rounded-full border border-primary/20 bg-card px-4 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/5"
+              >
+                <Home size={15} />
+                Voltar ao Início
+              </button>
+            </div>
+
             <button
-              onClick={() => setTab("inicio")}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 py-3 text-[12px] font-bold text-primary transition-colors hover:bg-primary/10"
+              onClick={() => toggleDayCompleted(day, actorId)}
+              className="mt-3 w-full text-center text-xs font-medium text-muted-foreground underline-offset-4 transition-colors hover:text-primary hover:underline"
             >
-              <Home size={14} />
-              Início
-            </button>
-            <button
-              onClick={() => setTab("diagnostico")}
-              className="flex items-center justify-center gap-1.5 rounded-xl border border-accent/20 bg-accent/5 py-3 text-[12px] font-bold text-accent transition-colors hover:bg-accent/10"
-            >
-              <Stethoscope size={14} />
-              Diagnóstico
+              Desfazer conclusão
             </button>
           </div>
         )}
@@ -4607,96 +4726,6 @@ function ConfirmModal({
 
 /* ---------------- Resumo ---------------- */
 
-function DayCompleteModal({
-  day,
-  meta,
-  entry,
-  applicationsForDay,
-  canAdvance,
-  onCancel,
-  onConfirm,
-}: {
-  day: number;
-  meta: { checklist: string[]; title?: string };
-  entry: { checklist: Record<string, boolean>; note: string; completed: boolean };
-  applicationsForDay: number;
-  canAdvance: boolean;
-  onCancel: () => void;
-  onConfirm: (advance: boolean) => void;
-}) {
-  const total = meta.checklist.length;
-  const done = meta.checklist.filter((i) => entry.checklist[i]).length;
-  const noteTrim = entry.note?.trim() ?? "";
-  // Trava o scroll do fundo enquanto o modal está aberto
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-  return (
-    <div
-      onClick={onCancel}
-      className="fixed inset-0 z-[100] flex items-end justify-center overflow-y-auto overscroll-contain bg-primary/40 p-4 backdrop-blur-sm sm:items-center"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        className="my-auto w-full max-w-sm rounded-3xl border border-border bg-card p-5 shadow-2xl"
-      >
-        <div className="text-xs font-bold uppercase tracking-wider text-accent">Resumo do dia</div>
-        <div className="mt-1 font-display text-xl text-primary">Concluir Dia {day}?</div>
-        <div className="mt-4 space-y-2 rounded-2xl border border-border bg-muted/30 p-3 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Checklist</span>
-            <span className="font-semibold text-foreground">{done}/{total}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Aplicações registradas</span>
-            <span className="font-semibold text-foreground">{applicationsForDay}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Registro no diário</span>
-            <span className="font-semibold text-foreground">{noteTrim ? "Sim" : "Não"}</span>
-          </div>
-          {noteTrim && (
-            <p className="mt-2 line-clamp-3 border-t border-border/50 pt-2 text-xs italic text-muted-foreground">
-              "{noteTrim}"
-            </p>
-          )}
-        </div>
-        {done < total && (
-          <p className="mt-3 text-xs text-accent">
-            Ainda restam {total - done} item(ns) do checklist. Você pode concluir mesmo assim.
-          </p>
-        )}
-        <div className="mt-4 flex flex-col gap-2">
-          {canAdvance && (
-            <button
-              onClick={() => onConfirm(true)}
-              className="w-full rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
-            >
-              Concluir e avançar para Dia {day + 1}
-            </button>
-          )}
-          <button
-            onClick={() => onConfirm(false)}
-            className="w-full rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground"
-          >
-            {canAdvance ? `Só concluir Dia ${day}` : `Concluir Dia ${day}`}
-          </button>
-          <button
-            onClick={onCancel}
-            className="w-full rounded-full border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-muted"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function ResumoTab({ actorId }: { actorId: string }) {
   const { state } = useProtocolStore();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -4909,18 +4938,20 @@ function SectionHeader({
   title,
   hint,
   subtitle,
+  nowrapTitle,
 }: {
   eyebrow: string;
   title: string;
   hint?: string;
   subtitle?: string;
+  nowrapTitle?: boolean;
 }) {
   return (
     <div className="pt-2">
       <div className="flex items-baseline justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] font-bold uppercase tracking-widest text-accent">{eyebrow}</div>
-          <h2 className="font-display text-lg leading-tight text-primary">{title}</h2>
+          <h2 className={cn("font-display text-lg leading-tight text-primary", nowrapTitle && "whitespace-nowrap")}>{title}</h2>
         </div>
         {hint && (
           <span className="shrink-0 text-[10px] italic text-muted-foreground text-right max-w-[55%]">

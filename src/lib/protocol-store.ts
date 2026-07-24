@@ -71,8 +71,6 @@ export type ProtocolState = {
   applications: ApplicationRecord[];
   finalEval: FinalEvaluation;
   onboarded: boolean;
-  tourCompleted?: boolean;
-  remindersCompleted?: Record<number, boolean>;
   settings?: {
     muteSounds?: boolean;
     hapticsDisabled?: boolean;
@@ -166,8 +164,6 @@ export const defaultState: ProtocolState = {
   finalEval: { improved: "", same: "", attention: "", keep: "", path: "" },
   onboarded: false,
   onboardingStep: "welcome",
-  tourCompleted: false,
-  remindersCompleted: {},
 };
 
 let listeners: Array<() => void> = [];
@@ -368,20 +364,6 @@ export function useProtocolStore() {
     wrapSetState((s) => ({ ...s, onboarded: v }), actorId);
   }, [wrapSetState]);
 
-  const toggleReminder = useCallback((day: number, actorId: string | "guest") => {
-    wrapSetState((s) => ({
-      ...s,
-      remindersCompleted: {
-        ...(s.remindersCompleted || {}),
-        [day]: !(s.remindersCompleted?.[day])
-      }
-    }), actorId);
-  }, [wrapSetState]);
-
-  const setTourCompleted = useCallback((v: boolean, actorId: string | "guest") => {
-    wrapSetState((s) => ({ ...s, tourCompleted: v }), actorId);
-  }, [wrapSetState]);
-
   const updateFinalEval = useCallback((patch: Partial<FinalEvaluation>, actorId: string | "guest") => {
     wrapSetState((s) => ({ ...s, finalEval: { ...s.finalEval, ...patch } }), actorId);
   }, [wrapSetState]);
@@ -397,8 +379,6 @@ export function useProtocolStore() {
     registerApplication,
     setCurrentDay,
     setOnboarded,
-    setTourCompleted,
-    toggleReminder,
     updateFinalEval,
     hydrateStore, // Adicionado para facilitar uso em componentes quando necessário
     clearStore,   // Adicionado

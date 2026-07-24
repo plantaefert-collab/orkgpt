@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { hydrateStore, clearStore, defaultState, normalizeRemoteProgress, ProtocolState } from "@/lib/protocol-store";
 import { AuthBootstrapStatus, UserProfile } from "@/lib/auth/types";
-import { loadFromCache, saveToCache, getCacheTimestamp } from "@/lib/protocol-cache";
+import { loadFromCache, saveToCache, getCacheTimestamp, setGuestActive } from "@/lib/protocol-cache";
 import { fetchUserProfile, fetchUserProgress, saveProgressRemote } from "@/lib/protocol-cloud";
 import { isDiagnosisCurrent, totalObservations } from "@/lib/protocol-store";
 
@@ -28,6 +28,7 @@ export function useAuthBootstrap() {
       return;
     }
 
+    setGuestActive(false);
     setStatus("loading_remote_data");
     try {
       const [profileRes, progressRes] = await Promise.all([
