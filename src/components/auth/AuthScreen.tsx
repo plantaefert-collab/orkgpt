@@ -149,6 +149,9 @@ export function AuthScreen({ onBack, onSuccess, next }: AuthScreenProps) {
     try {
       const { lovable } = await import("@/integrations/lovable/index");
       try { sessionStorage.setItem("pf_oauth_pending", "1"); } catch {}
+      if (next) {
+        try { sessionStorage.setItem("pf_oauth_next", next); } catch {}
+      }
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
         extraParams: { prompt: "select_account" }
