@@ -1,8 +1,19 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { resolvePostAuthDestination } from "@/lib/auth-destination";
+
+function readPendingNext(): string | undefined {
+  try {
+    const value = sessionStorage.getItem("pf_oauth_next");
+    if (value) {
+      sessionStorage.removeItem("pf_oauth_next");
+      return value;
+    }
+  } catch {}
+  return undefined;
+}
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -17,9 +28,12 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
+  const search = useSearch({ from: "/auth" });
+  const next = typeof search?.next === "string" ? search.next : undefined;
 
   async function resolveDestination(userId: string) {
-    return resolvePostAuthDestination(userId);
+    const pendingNext = readPendingNext();
+    return resolvePostAuthDestination(userId, { explicitRedirect: next ?? pendingNext });
   }
 
   useEffect(() => {
@@ -39,10 +53,11 @@ function AuthPage() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, next]);
 
   return (
     <AuthScreen
+      next={next}
       onBack={() => navigate({ to: "/", replace: true })}
       onSuccess={async () => {
         const { data } = await supabase.auth.getSession();

@@ -12,9 +12,19 @@ type Feedback = {
 interface AuthScreenProps {
   onBack: () => void;
   onSuccess: (context?: { isNewSignup?: boolean }) => void;
+  next?: string;
 }
 
-export function AuthScreen({ onBack, onSuccess }: AuthScreenProps) {
+function isSameOriginRelativePath(path: string): boolean {
+  try {
+    const url = new URL(path, window.location.origin);
+    return url.origin === window.location.origin && url.pathname.startsWith("/");
+  } catch {
+    return false;
+  }
+}
+
+export function AuthScreen({ onBack, onSuccess, next }: AuthScreenProps) {
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,11 +73,14 @@ export function AuthScreen({ onBack, onSuccess }: AuthScreenProps) {
         return;
       }
 
+      const emailRedirectTo = next && isSameOriginRelativePath(next)
+        ? `${window.location.origin}${next}`
+        : window.location.origin;
       const { data, error } = mode === "signup"
         ? await supabase.auth.signUp({
             email: trimmedEmail,
             password,
-            options: { emailRedirectTo: window.location.origin },
+            options: { emailRedirectTo },
           })
         : await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
       
@@ -104,10 +117,13 @@ export function AuthScreen({ onBack, onSuccess }: AuthScreenProps) {
     setFeedback(null);
 
     try {
+      const emailRedirectTo = next && isSameOriginRelativePath(next)
+        ? `${window.location.origin}${next}`
+        : window.location.origin;
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: targetEmail,
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo },
       });
 
       if (error) throw error;
@@ -133,6 +149,9 @@ export function AuthScreen({ onBack, onSuccess }: AuthScreenProps) {
     try {
       const { lovable } = await import("@/integrations/lovable/index");
       try { sessionStorage.setItem("pf_oauth_pending", "1"); } catch {}
+      if (next) {
+        try { sessionStorage.setItem("pf_oauth_next", next); } catch {}
+      }
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
         extraParams: { prompt: "select_account" }
