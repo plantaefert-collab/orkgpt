@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TesteOnboardingRouteImport } from './routes/teste-onboarding'
 import { Route as ResumoRouteImport } from './routes/resumo'
 import { Route as Protocolo21DiasRouteImport } from './routes/protocolo-21-dias'
+import { Route as PrimeirosPassosRouteImport } from './routes/primeiros-passos'
 import { Route as PlanoRouteImport } from './routes/plano'
 import { Route as OpcoesMetodoRouteImport } from './routes/opcoes-metodo'
 import { Route as MinhaOrquideaRouteImport } from './routes/minha-orquidea'
@@ -38,6 +39,11 @@ const ResumoRoute = ResumoRouteImport.update({
 const Protocolo21DiasRoute = Protocolo21DiasRouteImport.update({
   id: '/protocolo-21-dias',
   path: '/protocolo-21-dias',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrimeirosPassosRoute = PrimeirosPassosRouteImport.update({
+  id: '/primeiros-passos',
+  path: '/primeiros-passos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanoRoute = PlanoRouteImport.update({
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/minha-orquidea': typeof MinhaOrquideaRoute
   '/opcoes-metodo': typeof OpcoesMetodoRoute
   '/plano': typeof PlanoRoute
+  '/primeiros-passos': typeof PrimeirosPassosRoute
   '/protocolo-21-dias': typeof Protocolo21DiasRoute
   '/resumo': typeof ResumoRoute
   '/teste-onboarding': typeof TesteOnboardingRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/minha-orquidea': typeof MinhaOrquideaRoute
   '/opcoes-metodo': typeof OpcoesMetodoRoute
   '/plano': typeof PlanoRoute
+  '/primeiros-passos': typeof PrimeirosPassosRoute
   '/protocolo-21-dias': typeof Protocolo21DiasRoute
   '/resumo': typeof ResumoRoute
   '/teste-onboarding': typeof TesteOnboardingRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/minha-orquidea': typeof MinhaOrquideaRoute
   '/opcoes-metodo': typeof OpcoesMetodoRoute
   '/plano': typeof PlanoRoute
+  '/primeiros-passos': typeof PrimeirosPassosRoute
   '/protocolo-21-dias': typeof Protocolo21DiasRoute
   '/resumo': typeof ResumoRoute
   '/teste-onboarding': typeof TesteOnboardingRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/minha-orquidea'
     | '/opcoes-metodo'
     | '/plano'
+    | '/primeiros-passos'
     | '/protocolo-21-dias'
     | '/resumo'
     | '/teste-onboarding'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/minha-orquidea'
     | '/opcoes-metodo'
     | '/plano'
+    | '/primeiros-passos'
     | '/protocolo-21-dias'
     | '/resumo'
     | '/teste-onboarding'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/minha-orquidea'
     | '/opcoes-metodo'
     | '/plano'
+    | '/primeiros-passos'
     | '/protocolo-21-dias'
     | '/resumo'
     | '/teste-onboarding'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   MinhaOrquideaRoute: typeof MinhaOrquideaRoute
   OpcoesMetodoRoute: typeof OpcoesMetodoRoute
   PlanoRoute: typeof PlanoRoute
+  PrimeirosPassosRoute: typeof PrimeirosPassosRoute
   Protocolo21DiasRoute: typeof Protocolo21DiasRoute
   ResumoRoute: typeof ResumoRoute
   TesteOnboardingRoute: typeof TesteOnboardingRoute
@@ -246,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/protocolo-21-dias'
       fullPath: '/protocolo-21-dias'
       preLoaderRoute: typeof Protocolo21DiasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/primeiros-passos': {
+      id: '/primeiros-passos'
+      path: '/primeiros-passos'
+      fullPath: '/primeiros-passos'
+      preLoaderRoute: typeof PrimeirosPassosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plano': {
@@ -348,6 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   MinhaOrquideaRoute: MinhaOrquideaRoute,
   OpcoesMetodoRoute: OpcoesMetodoRoute,
   PlanoRoute: PlanoRoute,
+  PrimeirosPassosRoute: PrimeirosPassosRoute,
   Protocolo21DiasRoute: Protocolo21DiasRoute,
   ResumoRoute: ResumoRoute,
   TesteOnboardingRoute: TesteOnboardingRoute,
@@ -355,13 +376,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
