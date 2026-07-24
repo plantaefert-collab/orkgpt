@@ -141,29 +141,34 @@ describe("deriveHealthScore", () => {
     expect(healthStatus.tone).toBe("green");
   });
 
-  it("clamps to 0 and flags urgent attention with many priorities", () => {
+  it("keeps an explicit score and flags urgent attention with many priorities", () => {
     const { healthScore, healthStatus } = deriveHealthScore(0, 0, 6);
-    expect(healthScore).toBe(0);
+    expect(healthScore).toBe(25);
     expect(healthStatus.label).toBe("Requer atenção imediata");
     expect(healthStatus.tone).toBe("warn");
   });
 
-  it("penalizes priorities (20) and adjustments (10), bonuses favorable (5)", () => {
-    // 100 - 1*20 - 1*10 + 2*5 = 80 -> Saudável
-    expect(deriveHealthScore(2, 1, 1).healthScore).toBe(80);
-    // 100 - 2*20 - 1*10 = 50 -> Em recuperação
+  it("uses a proportional weighted average across classified signals", () => {
+    // (2*100 + 1*60 + 1*25) / 4 = 71.25 -> 71
+    expect(deriveHealthScore(2, 1, 1).healthScore).toBe(71);
+    // (1*60 + 2*25) / 3 = 36.67 -> 37
     const mid = deriveHealthScore(0, 1, 2);
-    expect(mid.healthScore).toBe(50);
-    expect(mid.healthStatus.label).toBe("Em recuperação");
+    expect(mid.healthScore).toBe(37);
+    expect(mid.healthStatus.label).toBe("Requer atenção imediata");
+  });
+
+  it("keeps a dense mixed diagnosis away from an artificial zero", () => {
+    const mixed = deriveHealthScore(1, 6, 3);
+    expect(mixed.healthScore).toBe(54);
+    expect(mixed.healthStatus.label).toBe("Em recuperação");
   });
 });
 
 describe("computeDiagnosisResult — score / conflicts / insights", () => {
   it("attaches healthScore and healthStatus to the result", () => {
     const r = computeDiagnosisResult(withAnswers({ roots: ["Raízes moles"] }), 1);
-    // 100 - 1*20 = 80
-    expect(r.healthScore).toBe(80);
-    expect(r.healthStatus.label).toBe("Saudável");
+    expect(r.healthScore).toBe(25);
+    expect(r.healthStatus.label).toBe("Requer atenção imediata");
   });
 
   it("detects opposing signals in the same category as a conflict", () => {

@@ -108,7 +108,7 @@ describe("normalizeDiagnosisResult", () => {
       normalizeDiagnosisResult({ favorable: [], adjustments: [], priorities: null, insufficientInformation: [] }),
     ).toBeNull();
   });
-  it("passes through a valid result", () => {
+  it("normalizes a valid result with the current scoring formula", () => {
     const valid: DiagnosisResult = {
       favorable: [],
       adjustments: [],
@@ -122,7 +122,40 @@ describe("normalizeDiagnosisResult", () => {
       completedAt: "2026-01-01T00:00:00.000Z",
       answersVersion: 1,
     };
-    expect(normalizeDiagnosisResult(valid)).toEqual(valid);
+    const normalized = normalizeDiagnosisResult(valid);
+    expect(normalized).toEqual({
+      ...valid,
+      healthStatus: {
+        label: "Saudável",
+        tone: "green",
+        message: "Sua orquídea mostra sinais consistentes de saúde. Mantenha a rotina.",
+      },
+    });
+  });
+
+  it("recalculates a persisted score produced by an older formula", () => {
+    const guidance = (classification: DiagnosisGuidance["classification"], id: string): DiagnosisGuidance => ({
+      id,
+      category: "roots",
+      classification,
+    } as DiagnosisGuidance);
+    const persisted = {
+      favorable: [guidance("favorable", "f-1")],
+      adjustments: Array.from({ length: 6 }, (_, index) => guidance("adjustment", `a-${index}`)),
+      priorities: Array.from({ length: 3 }, (_, index) => guidance("priority", `p-${index}`)),
+      insufficientInformation: [],
+      trackingPoints: [],
+      healthScore: 0,
+      healthStatus: { label: "Requer atenção imediata", tone: "warn", message: "antigo" },
+      conflicts: [],
+      insights: [],
+      completedAt: "2026-01-01T00:00:00.000Z",
+      answersVersion: 1,
+    };
+
+    const normalized = normalizeDiagnosisResult(persisted);
+    expect(normalized?.healthScore).toBe(54);
+    expect(normalized?.healthStatus.label).toBe("Em recuperação");
   });
 
   it("backfills health score, conflicts and insights for legacy results", () => {

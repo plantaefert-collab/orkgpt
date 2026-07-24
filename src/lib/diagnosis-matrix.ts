@@ -800,18 +800,21 @@ export type DiagnosisResult = {
 
 /**
  * Deriva o índice de saúde (0–100) e a faixa textual a partir das listas
- * classificadas. Penaliza prioridades e ajustes; bonifica sinais favoráveis.
- * Fonte única de verdade — antes vivia embutido na UI (`ResultBlocks`).
+ * classificadas. Cada sinal contribui proporcionalmente para o resultado:
+ * favorável = 100, ajuste = 60 e prioridade = 25.
+ *
+ * A média evita que diagnósticos com várias respostas caiam artificialmente
+ * para zero apenas por terem mais sinais selecionados.
  */
 export function deriveHealthScore(
   favorableCount: number,
   adjustmentCount: number,
   priorityCount: number,
 ): { healthScore: number; healthStatus: HealthStatus } {
-  const observedCount = favorableCount + adjustmentCount + priorityCount;
-  const weightedRisk = Math.max(0, priorityCount * 3 + adjustmentCount * 1.5 - favorableCount * 0.75);
-  const raw = observedCount === 0 ? 100 : 100 - Math.sqrt(weightedRisk) * 16;
-  const healthScore = Math.round(Math.max(0, Math.min(100, raw)));
+  const classifiedCount = favorableCount + adjustmentCount + priorityCount;
+  const weightedTotal = favorableCount * 100 + adjustmentCount * 60 + priorityCount * 25;
+  const raw = classifiedCount === 0 ? 100 : weightedTotal / classifiedCount;
+  const healthScore = Math.max(0, Math.min(100, Math.round(raw)));
   const healthStatus: HealthStatus =
     healthScore >= 80
       ? { label: "Saudável", tone: "green", message: "Sua orquídea mostra sinais consistentes de saúde. Mantenha a rotina." }
@@ -1096,9 +1099,13 @@ export function normalizeDiagnosisResult(v: unknown): DiagnosisResult | null {
   if (!favorable || !adjustments || !priorities || !insufficientInformation) return null;
 
   const raw = v as Record<string, unknown>;
-  // Recalcula sempre pela matriz atual para corrigir resultados salvos com a
-  // fórmula antiga, que podia derrubar o veredito para 0 ao marcar muitos sinais.
-  const { healthScore, healthStatus } = deriveHealthScore(favorable.length, adjustments.length, priorities.length);
+  // Recalcula sempre pela matriz atual para corrigir resultados persistidos
+  // com a fórmula antiga, que podia zerar diagnósticos com muitos sinais.
+  const { healthScore, healthStatus } = deriveHealthScore(
+    favorable.length,
+    adjustments.length,
+    priorities.length,
+  );
 
   return {
     ...(v as DiagnosisResult),
@@ -1122,4 +1129,3 @@ export function reconcileDiagnosisResultState(
   if (diagnosisResult.answersVersion !== answersVersion) return { diagnosisResult, diagnosisStatus: "outdated" };
   return { diagnosisResult, diagnosisStatus: diagnosisStatus === "none" ? "fresh" : diagnosisStatus };
 }
-
