@@ -808,8 +808,12 @@ export function deriveHealthScore(
   adjustmentCount: number,
   priorityCount: number,
 ): { healthScore: number; healthStatus: HealthStatus } {
-  const raw = 100 - priorityCount * 20 - adjustmentCount * 10 + favorableCount * 5;
-  const healthScore = Math.max(0, Math.min(100, raw));
+  const observedCount = favorableCount + adjustmentCount + priorityCount;
+  const weightedRisk = Math.max(0, priorityCount * 3 + adjustmentCount * 1.5 - favorableCount * 0.75);
+  const maxRisk = observedCount * 3;
+  const riskRatio = maxRisk > 0 ? weightedRisk / maxRisk : 0;
+  const raw = observedCount === 0 ? 100 : 100 - riskRatio * 75;
+  const healthScore = Math.round(Math.max(0, Math.min(100, raw)));
   const healthStatus: HealthStatus =
     healthScore >= 80
       ? { label: "Saudável", tone: "green", message: "Sua orquídea mostra sinais consistentes de saúde. Mantenha a rotina." }
@@ -1094,11 +1098,9 @@ export function normalizeDiagnosisResult(v: unknown): DiagnosisResult | null {
   if (!favorable || !adjustments || !priorities || !insufficientInformation) return null;
 
   const raw = v as Record<string, unknown>;
-  // Retrocompatibilidade: resultados salvos antes do score/insights no motor.
-  const hasHealth = typeof raw.healthScore === "number" && isPlainObject(raw.healthStatus);
-  const { healthScore, healthStatus } = hasHealth
-    ? { healthScore: raw.healthScore as number, healthStatus: raw.healthStatus as HealthStatus }
-    : deriveHealthScore(favorable.length, adjustments.length, priorities.length);
+  // Recalcula sempre pela matriz atual para corrigir resultados salvos com a
+  // fórmula antiga, que podia derrubar o veredito para 0 ao marcar muitos sinais.
+  const { healthScore, healthStatus } = deriveHealthScore(favorable.length, adjustments.length, priorities.length);
 
   return {
     ...(v as DiagnosisResult),
