@@ -73,11 +73,14 @@ export function AuthScreen({ onBack, onSuccess, next }: AuthScreenProps) {
         return;
       }
 
+      const emailRedirectTo = next && isSameOriginRelativePath(next)
+        ? `${window.location.origin}${next}`
+        : window.location.origin;
       const { data, error } = mode === "signup"
         ? await supabase.auth.signUp({
             email: trimmedEmail,
             password,
-            options: { emailRedirectTo: window.location.origin },
+            options: { emailRedirectTo },
           })
         : await supabase.auth.signInWithPassword({ email: trimmedEmail, password });
       
