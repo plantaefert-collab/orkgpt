@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthScreen } from "@/components/auth/AuthScreen";
@@ -16,9 +16,6 @@ function readPendingNext(): string | undefined {
 }
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    next: typeof search.next === "string" ? search.next : undefined,
-  }),
   head: () => ({
     meta: [
       { title: "Entrar — Guia Orquídeas Floridas" },
@@ -31,7 +28,8 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { next } = Route.useSearch();
+  const search = useSearch({ from: "/auth" });
+  const next = typeof search?.next === "string" ? search.next : undefined;
 
   async function resolveDestination(userId: string) {
     const pendingNext = readPendingNext();
