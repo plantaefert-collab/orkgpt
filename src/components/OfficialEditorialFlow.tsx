@@ -116,6 +116,8 @@ export function OfficialEditorialFlowComponent() {
     favorableItems: rawResult.favorable,
     insufficientItems: rawResult.insufficientInformation,
     trackingPoints: rawResult.trackingPoints,
+    healthScore: rawResult.healthScore,
+    healthStatus: rawResult.healthStatus,
   };
   const totalObservedCount = Object.values(selectedAnswers).reduce(
     (sum, list) => sum + list.length,
