@@ -3,15 +3,26 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PlantaefertLogo } from "@/components/PlantaefertLogo";
 
+type OAuthClient = {
+  name?: string;
+  redirect_uri?: string;
+};
+
 type OAuthAuthorizationDetails = {
-  client?: {
-    name?: string;
-    redirect_uri?: string;
-  } | null;
+  client?: OAuthClient | null;
   redirect_url?: string;
   redirect_to?: string;
   scope?: string;
 };
+
+type OAuthRedirect = {
+  redirect_url?: string;
+  redirect_to?: string;
+};
+
+function isRedirect(data: OAuthAuthorizationDetails | OAuthRedirect): data is OAuthRedirect {
+  return "redirect_url" in data && !("client" in data);
+}
 
 export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
@@ -32,9 +43,9 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
     const authorizationId = new URLSearchParams(location.search).get("authorization_id")!;
     const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId);
     if (error) throw error;
-    const immediate = data?.redirect_url ?? data?.redirect_to;
-    if (immediate && !data?.client) {
-      throw redirect({ href: immediate });
+    if (isRedirect(data)) {
+      const immediate = data.redirect_url ?? data.redirect_to;
+      if (immediate) throw redirect({ href: immediate });
     }
     return data as OAuthAuthorizationDetails;
   },
@@ -73,7 +84,7 @@ function Consent() {
       return;
     }
 
-    const target = data?.redirect_url ?? data?.redirect_to;
+    const target = (data as OAuthRedirect)?.redirect_url ?? (data as OAuthRedirect)?.redirect_to;
     if (!target) {
       setBusy(false);
       setError("Nenhum redirecionamento retornado pelo servidor de autorização.");
@@ -87,7 +98,7 @@ function Consent() {
   const redirectUri = details?.client?.redirect_uri ?? "";
   const scopes = (details?.scope ?? "openid email profile")
     .split(" ")
-    .filter((s) => s.trim());
+    .filter((s: string) => s.trim());
 
   return (
     <main className="min-h-screen bg-background flex flex-col items-center justify-center p-5">
@@ -125,8 +136,8 @@ function Consent() {
                 <li>• Nome e perfil</li>
               )}
               {scopes
-                .filter((s) => !["openid", "email", "profile"].includes(s))
-                .map((s) => (
+                .filter((s: string) => !["openid", "email", "profile"].includes(s))
+                .map((s: string) => (
                   <li key={s}>• Permissão adicional: {s}</li>
                 ))}
             </ul>
