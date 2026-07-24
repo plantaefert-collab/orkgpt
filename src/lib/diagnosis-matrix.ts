@@ -810,9 +810,7 @@ export function deriveHealthScore(
 ): { healthScore: number; healthStatus: HealthStatus } {
   const observedCount = favorableCount + adjustmentCount + priorityCount;
   const weightedRisk = Math.max(0, priorityCount * 3 + adjustmentCount * 1.5 - favorableCount * 0.75);
-  const maxRisk = observedCount * 3;
-  const riskRatio = maxRisk > 0 ? weightedRisk / maxRisk : 0;
-  const raw = observedCount === 0 ? 100 : 100 - riskRatio * 75;
+  const raw = observedCount === 0 ? 100 : 100 - Math.sqrt(weightedRisk) * 16;
   const healthScore = Math.round(Math.max(0, Math.min(100, raw)));
   const healthStatus: HealthStatus =
     healthScore >= 80
