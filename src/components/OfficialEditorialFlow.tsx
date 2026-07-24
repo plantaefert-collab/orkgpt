@@ -116,6 +116,8 @@ export function OfficialEditorialFlowComponent() {
     favorableItems: rawResult.favorable,
     insufficientItems: rawResult.insufficientInformation,
     trackingPoints: rawResult.trackingPoints,
+    healthScore: rawResult.healthScore,
+    healthStatus: rawResult.healthStatus,
   };
   const totalObservedCount = Object.values(selectedAnswers).reduce(
     (sum, list) => sum + list.length,
@@ -566,6 +568,38 @@ export function OfficialEditorialFlowComponent() {
                   <p className="mt-1 text-[11px] text-[#173D32]/70">
                     {totalObservedCount} sinais observados. Este resultado orienta o acompanhamento e não é um diagnóstico definitivo.
                   </p>
+                </div>
+              </div>
+
+              {/* VEREDITO / NÍVEL DE SAÚDE */}
+              <div className="rounded-3xl border-2 border-[#D35400]/40 bg-white p-5 shadow-lg">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[10.5px] font-extrabold uppercase tracking-widest text-[#D35400]">
+                      Veredito
+                    </div>
+                    <div className="mt-1 font-display text-lg leading-tight text-[#173D32]">
+                      {resultData.healthStatus.label}
+                    </div>
+                    <p className="mt-1 text-[11px] text-[#173D32]/70">
+                      {resultData.healthStatus.message}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[#155F4E]/70">
+                      Nível de saúde
+                    </div>
+                    <div className="font-display text-4xl leading-none text-[#155F4E]">
+                      {resultData.healthScore}
+                      <span className="text-lg text-[#155F4E]/60">/100</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#155F4E]/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#D35400] to-[#155F4E] transition-all"
+                    style={{ width: `${resultData.healthScore}%` }}
+                  />
                 </div>
               </div>
 
