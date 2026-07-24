@@ -224,7 +224,7 @@ function HomePage() {
                 </Link>
                 <Link
                   to="/inicio"
-                  className="inline-flex items-center gap-1.5 bg-[#155F4E] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#F8F5EE] transition-colors duration-300 hover:bg-[#D35400] sm:px-4"
+                  className="inline-flex items-center gap-1.5 bg-[#9C2F6F] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#F8F5EE] shadow-sm shadow-[#9C2F6F]/20 transition-colors duration-300 hover:bg-[#85275E] sm:px-4"
                 >
                   Continuar
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -241,7 +241,7 @@ function HomePage() {
                 </Link>
                 <Link
                   to="/auth"
-                  className="inline-flex items-center gap-1.5 bg-[#155F4E] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#F8F5EE] transition-colors duration-300 hover:bg-[#D35400] sm:px-4"
+                  className="inline-flex items-center gap-1.5 bg-[#9C2F6F] px-3.5 py-2.5 text-[10px] font-bold uppercase tracking-widest text-[#F8F5EE] shadow-sm shadow-[#9C2F6F]/20 transition-colors duration-300 hover:bg-[#85275E] sm:px-4"
                 >
                   <span className="hidden sm:inline">Começar grátis</span>
                   <span className="sm:hidden">Começar</span>
@@ -279,7 +279,7 @@ function HomePage() {
             <div className="flex flex-wrap gap-4">
               <Link
                 to="/auth"
-                className="bg-[#155F4E] px-10 py-5 text-[10px] font-bold uppercase tracking-widest text-[#F8F5EE] transition-all duration-500 hover:bg-[#D35400] shadow-md hover:shadow-xl"
+                className="bg-[#9C2F6F] px-10 py-5 text-[10px] font-bold uppercase tracking-widest text-[#F8F5EE] shadow-md shadow-[#9C2F6F]/20 transition-all duration-500 hover:bg-[#85275E] hover:shadow-xl"
               >
                 Começar meu plano grátis
               </Link>
@@ -400,7 +400,7 @@ function HomePage() {
               <div className="shrink-0 w-full md:w-auto">
                 <Link
                   to="/auth"
-                  className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-[#D35400] text-white font-bold text-[10px] uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-[#155F4E] transition-colors duration-300 shadow-md"
+                  className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-[#9C2F6F] text-white font-bold text-[10px] uppercase tracking-widest px-8 py-4 rounded-xl hover:bg-[#85275E] transition-colors duration-300 shadow-md shadow-[#9C2F6F]/20"
                 >
                   <span>{sintomaAtual.actionText}</span>
                   <ArrowRight className="h-4 w-4" />
@@ -597,7 +597,7 @@ function HomePage() {
           <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/auth"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-[#D35400] hover:bg-white hover:text-[#155F4E] text-white font-bold text-xs uppercase tracking-widest px-10 py-5 rounded-xl shadow-xl transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-[#9C2F6F] hover:bg-[#85275E] text-white font-bold text-xs uppercase tracking-widest px-10 py-5 rounded-xl shadow-xl shadow-[#9C2F6F]/20 transition-all"
             >
               <span>Garantir Kit 500ml + Acesso ao App</span>
               <ArrowRight className="h-4 w-4" />
@@ -750,7 +750,7 @@ function HomePage() {
           <div className="flex flex-col items-center justify-center gap-6 md:flex-row md:gap-8">
             <Link
               to="/auth"
-              className="w-full bg-[#D35400] px-14 py-6 text-[10px] font-bold uppercase tracking-[0.2em] text-[#F8F5EE] shadow-xl transition-all hover:scale-105 md:w-auto rounded-xl"
+              className="w-full bg-[#9C2F6F] px-14 py-6 text-[10px] font-bold uppercase tracking-[0.2em] text-[#F8F5EE] shadow-xl shadow-[#9C2F6F]/20 transition-all hover:scale-105 hover:bg-[#85275E] md:w-auto rounded-xl"
             >
               Começar meu plano grátis
             </Link>

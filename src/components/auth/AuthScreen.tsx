@@ -213,7 +213,7 @@ export function AuthScreen({ onBack, onSuccess }: AuthScreenProps) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-full bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
+            className="w-full rounded-full bg-accent py-3.5 text-sm font-bold text-accent-foreground shadow-md shadow-accent/20 transition-all hover:bg-accent/90 active:scale-[0.98] disabled:opacity-50"
           >
             {loading ? "Processando..." : mode === "login" ? "Entrar" : "Criar conta"}
           </button>

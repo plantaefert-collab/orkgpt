@@ -11,7 +11,7 @@
   --color-plantae-deep: #155F4E;
   --color-plantae-green: #155F4E;
   --color-plantae-soft: #F8F5EE;
-  --color-plantae-magenta: #D35400;
+  --color-plantae-magenta: #9C2F6F;
   --color-plantae-rose: #FDF2F8;
   --color-plantae-lilac: #F5F3FF;
   --color-plantae-ink: #155F4E;
@@ -79,7 +79,7 @@
 
 :root {
   --radius: 0.5rem;
-  --background: oklch(0.975 0.005 85);
+  --background: oklch(0.951 0.015 80.7);
   --foreground: oklch(0.405 0.108 165.6);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.405 0.108 165.6);
@@ -91,16 +91,16 @@
   --secondary-foreground: oklch(0.405 0.108 165.6);
   --muted: oklch(0.94 0.01 85);
   --muted-foreground: oklch(0.45 0.05 165.6);
-  --accent: oklch(0.604 0.176 43.9);
-  --accent-foreground: oklch(0.98 0.01 43.9);
-  --lilac: oklch(0.96 0.02 43.9);
-  --lilac-foreground: oklch(0.4 0.15 43.9);
+  --accent: oklch(0.489 0.158 348.4);
+  --accent-foreground: oklch(0.988 0.008 345.3);
+  --lilac: oklch(0.95 0.018 342);
+  --lilac-foreground: oklch(0.415 0.134 348.1);
   --destructive: oklch(0.55 0.18 25);
   --destructive-foreground: oklch(0.98 0.01 25);
   --border: oklch(0.9 0.01 165.6);
   --input: oklch(0.9 0.01 165.6);
   --ring: oklch(0.405 0.108 165.6);
-  --chart-1: oklch(0.604 0.176 43.9);
+  --chart-1: oklch(0.489 0.158 348.4);
   --chart-2: oklch(0.405 0.108 165.6);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
@@ -128,7 +128,7 @@
   --secondary-foreground: oklch(0.984 0.003 247.858);
   --muted: oklch(0.279 0.041 260.031);
   --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
+  --accent: oklch(0.489 0.158 348.4);
   --accent-foreground: oklch(0.984 0.003 247.858);
   --destructive: oklch(0.704 0.191 22.216);
   --destructive-foreground: oklch(0.984 0.003 247.858);
@@ -183,10 +183,10 @@
   --secondary-foreground: oklch(0.1 0 0);
   --muted: oklch(0.92 0 0);
   --muted-foreground: oklch(0.25 0 0);
-  --accent: oklch(0.45 0.25 330);
+  --accent: oklch(0.45 0.22 348.4);
   --accent-foreground: oklch(1 0 0);
-  --lilac: oklch(0.95 0.04 330);
-  --lilac-foreground: oklch(0.2 0.15 330);
+  --lilac: oklch(0.95 0.04 348.4);
+  --lilac-foreground: oklch(0.2 0.15 348.4);
   --destructive: oklch(0.45 0.22 25);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.2 0 0);

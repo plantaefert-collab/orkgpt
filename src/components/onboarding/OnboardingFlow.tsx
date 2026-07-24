@@ -370,7 +370,7 @@ export function OnboardingFlow({ actorId, onFinish }: OnboardingFlowProps) {
           <button
             onClick={nextStep}
             disabled={step === "plant_info" && !plant.name}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-[0.98] disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/20 transition-all hover:bg-accent/90 active:scale-[0.98] disabled:opacity-50"
           >
             {step === "summary" ? "Começar Protocolo" : "Próximo"}
             <ChevronRight size={18} />

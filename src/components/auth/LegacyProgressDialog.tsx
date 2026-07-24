@@ -29,7 +29,7 @@ export function LegacyProgressDialog({ onImport, onContinue }: LegacyProgressDia
         <div className="mt-8 space-y-3">
           <button
             onClick={onImport}
-            className="w-full flex items-center justify-center gap-2 rounded-full bg-primary py-4 text-[15px] font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-transform active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 rounded-full bg-accent py-4 text-[15px] font-bold text-accent-foreground shadow-lg shadow-accent/20 transition-transform hover:bg-accent/90 active:scale-[0.98]"
           >
             <Download size={18} />
             Importar para esta conta

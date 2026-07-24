@@ -213,7 +213,7 @@ export function WelcomeScreen({
           >
             <div className="flex items-center justify-between border-b border-black/5 px-5 py-3.5">
               <span className="text-[11px] font-bold uppercase tracking-widest opacity-60">Próxima ação</span>
-              <div className="flex h-1.5 w-1.5 animate-pulse rounded-full bg-[#D35400]" />
+              <div className="flex h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-plantae-magenta)]" />
             </div>
             <div className="grid grid-cols-3 divide-x divide-black/5">
               <button
