@@ -117,10 +117,13 @@ export function AuthScreen({ onBack, onSuccess, next }: AuthScreenProps) {
     setFeedback(null);
 
     try {
+      const emailRedirectTo = next && isSameOriginRelativePath(next)
+        ? `${window.location.origin}${next}`
+        : window.location.origin;
       const { error } = await supabase.auth.resend({
         type: "signup",
         email: targetEmail,
-        options: { emailRedirectTo: window.location.origin },
+        options: { emailRedirectTo },
       });
 
       if (error) throw error;
