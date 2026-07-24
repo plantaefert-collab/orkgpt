@@ -1,15 +1,10 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { resolvePostAuthDestination } from "@/lib/auth-destination";
 
-type AuthSearch = { redirect?: string };
-
 export const Route = createFileRoute("/auth")({
-  validateSearch: (s: Record<string, unknown>): AuthSearch => ({
-    redirect: typeof s.redirect === "string" ? s.redirect : undefined,
-  }),
   head: () => ({
     meta: [
       { title: "Entrar — Guia Orquídeas Floridas" },
@@ -22,15 +17,9 @@ export const Route = createFileRoute("/auth")({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { redirect } = useSearch({ from: "/auth" });
-  const explicitRedirect =
-    redirect && redirect.startsWith("/") && !redirect.startsWith("//") ? redirect : null;
 
-  async function resolveDestination(userId: string, opts?: { isNewSignup?: boolean }) {
-    return resolvePostAuthDestination(userId, {
-      isNewSignup: opts?.isNewSignup,
-      explicitRedirect,
-    });
+  async function resolveDestination(userId: string) {
+    return resolvePostAuthDestination(userId);
   }
 
   useEffect(() => {
@@ -50,15 +39,15 @@ function AuthPage() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate, explicitRedirect]);
+  }, [navigate]);
 
   return (
     <AuthScreen
       onBack={() => navigate({ to: "/", replace: true })}
-      onSuccess={async (ctx) => {
+      onSuccess={async () => {
         const { data } = await supabase.auth.getSession();
         if (!data.session) return;
-        const dest = await resolveDestination(data.session.user.id, ctx);
+        const dest = await resolveDestination(data.session.user.id);
         navigate({ to: dest, replace: true });
       }}
     />
