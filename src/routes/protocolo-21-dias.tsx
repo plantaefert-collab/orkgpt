@@ -1765,6 +1765,7 @@ const APP_CARD_INTERACTIVE = `${APP_CARD_BASE} transition-all hover:border-prima
 const APP_CARD_FEATURED = "rounded-2xl border-2 border-accent/50 bg-gradient-to-br from-accent/[0.16] via-accent/[0.05] to-card shadow-[0_10px_32px_-14px_rgba(156,47,111,0.36)] ring-1 ring-accent/15";
 const APP_CARD_GREEN_FEATURED = "rounded-2xl border-2 border-primary/45 bg-gradient-to-br from-primary/[0.14] via-primary/[0.04] to-card shadow-[0_10px_32px_-14px_rgba(21,95,78,0.34)] ring-1 ring-primary/15";
 const APP_CARD_ACCENT_LAYER = "border-2 border-accent/50 bg-gradient-to-br from-accent/[0.16] via-accent/[0.05] to-card shadow-[0_10px_32px_-14px_rgba(156,47,111,0.36)] ring-1 ring-accent/15";
+const APP_CARD_ACCENT_LIGHT_HOVER = "hover:from-accent/[0.09] hover:via-accent/[0.03] hover:to-card hover:shadow-[0_14px_36px_-18px_rgba(156,47,111,0.42)]";
 const APP_CARD_INNER = "rounded-xl border border-primary/15 bg-card shadow-[0_4px_14px_-10px_rgba(21,95,78,0.45)]";
 const APP_CARD_INNER_HOVER = `${APP_CARD_INNER} transition-all hover:border-primary/35 hover:bg-primary/[0.06] hover:shadow-sm`;
 const APP_CARD_INNER_INTERACTIVE = `${APP_CARD_INNER_HOVER} active:scale-[0.99]`;
@@ -2012,7 +2013,8 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
           }}
           className={cn(
             APP_CARD_FEATURED,
-            "group relative w-full cursor-pointer overflow-hidden p-6 text-left transition-all hover:border-accent/65 hover:from-accent/20 active:scale-[0.99]",
+            APP_CARD_ACCENT_LIGHT_HOVER,
+            "group relative w-full cursor-pointer overflow-hidden p-6 text-left transition-all hover:border-accent/65 active:scale-[0.99]",
           )}
         >
           <div className="relative z-10">
@@ -2040,7 +2042,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               </span>
             </div>
           </div>
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/15 blur-2xl transition-all group-hover:bg-accent/25" />
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/15 blur-2xl transition-all group-hover:scale-110 group-hover:bg-accent/10" />
         </div>
       )}
 
@@ -2154,10 +2156,11 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
             className={cn(
               APP_CARD_INTERACTIVE,
               APP_CARD_ACCENT_LAYER,
+              APP_CARD_ACCENT_LIGHT_HOVER,
               "group relative w-full cursor-pointer overflow-hidden p-5 text-left",
               isApplicationDay && [3, 10, 17].includes(day)
-                ? "border-accent/60 from-accent/20 shadow-[0_12px_36px_-13px_rgba(156,47,111,0.44)] ring-accent/20 animate-[pulse_3s_ease-in-out_infinite] hover:border-accent/70 hover:from-accent/[0.23]"
-                : "hover:border-accent/65 hover:from-accent/20"
+                ? "border-accent/60 from-accent/20 shadow-[0_12px_36px_-13px_rgba(156,47,111,0.44)] ring-accent/20 animate-[pulse_3s_ease-in-out_infinite] hover:border-accent/70"
+                : "hover:border-accent/65"
             )}
           >
             <div className="relative z-10">

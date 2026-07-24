@@ -185,7 +185,18 @@ export function subscribe(listener: () => void): () => void {
 }
 
 export function hydrateStore(state: ProtocolState): void {
-  currentState = { ...state, saveError: undefined };
+  const normalizedResult = normalizeDiagnosisResult(state.diagnosisResult);
+  const reconciled = reconcileDiagnosisResultState(
+    normalizedResult,
+    state.diagnosisStatus,
+    state.answersVersion,
+  );
+  currentState = {
+    ...state,
+    diagnosisResult: reconciled.diagnosisResult,
+    diagnosisStatus: reconciled.diagnosisStatus,
+    saveError: undefined,
+  };
   notifyListeners();
 }
 
