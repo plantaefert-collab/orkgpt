@@ -18,7 +18,6 @@ import {
   CalendarCheck,
   Stethoscope,
   Images,
-  MoreHorizontal,
   BookOpen,
   Camera,
   Droplets,
@@ -162,6 +161,11 @@ const PATH_TO_TAB: Record<string, Tab> = Object.fromEntries(
   Object.entries(TAB_TO_PATH).map(([t, p]) => [p, t as Tab]),
 ) as Record<string, Tab>;
 
+function isLocalPreviewHost() {
+  if (typeof window === "undefined") return false;
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+}
+
 export function ProtocoloShell({ initialTab }: { initialTab?: Tab } = {}) {
   const store = useProtocolStore();
   const { status, user, error: authError, setStatus } = useAuthBootstrap();
@@ -194,9 +198,12 @@ export function ProtocoloShell({ initialTab }: { initialTab?: Tab } = {}) {
 
   useEffect(() => {
     // O modo visitante só continua ativo quando foi escolhido explicitamente.
-    // Acesso direto às páginas internas sem sessão segue para o login.
+    // No localhost, liberamos a visualização como visitante para que cada aba
+    // de preview funcione sem depender do sessionStorage de outra aba.
+    // Fora do ambiente local, páginas internas sem sessão seguem para o login.
     if (status === "signed_out") {
-      if (isGuestActive()) {
+      if (isGuestActive() || isLocalPreviewHost()) {
+        if (isLocalPreviewHost()) setGuestActive(true);
         setGuestMode(true);
       } else if (hasInitialTab) {
         navigate({ to: "/auth", replace: true });
@@ -250,7 +257,7 @@ export function ProtocoloShell({ initialTab }: { initialTab?: Tab } = {}) {
         <p className="mt-2 text-muted-foreground max-w-xs">{authError || "Não foi possível carregar seus dados."}</p>
         <button 
           onClick={() => window.location.reload()}
-          className="mt-6 rounded-full bg-primary px-8 py-3 text-sm font-bold text-primary-foreground shadow-md"
+          className="mt-6 rounded-full bg-accent px-8 py-3 text-sm font-bold text-accent-foreground shadow-md shadow-accent/20"
         >
           Tentar novamente
         </button>
@@ -272,14 +279,14 @@ export function ProtocoloShell({ initialTab }: { initialTab?: Tab } = {}) {
           classNames: {
             toast: "border shadow-lg",
             success: "bg-[#F8F5EE] border-[#155F4E]/20 text-[#155F4E]",
-            info: "bg-[#FDF2F8] border-[#D35400]/20 text-[#D35400]",
+            info: "bg-[#F8EAF2] border-[#9C2F6F]/20 text-[#9C2F6F]",
             error: "bg-destructive/5 border-destructive/20 text-destructive",
             warning: "bg-yellow-50 border-yellow-200 text-yellow-800",
           }
         }}
         icons={{
           success: <Sprout size={18} className="text-[#155F4E]" />,
-          info: <Sparkles size={18} className="text-[#D35400]" />,
+          info: <Sparkles size={18} className="text-[#9C2F6F]" />,
           error: <AlertCircle size={18} className="text-destructive" />,
           warning: <AlertTriangle size={18} className="text-yellow-600" />,
         }}
@@ -508,12 +515,12 @@ function PhaseProgressBar({ currentDay }: { currentDay: number }) {
   const phaseInfo = useMemo(() => {
     const day = Math.min(21, Math.max(1, currentDay));
     if (day <= 7) return { label: "Fase 1: Dias 1–7", progress: (day / 7) * 100, color: "bg-primary" };
-    if (day <= 14) return { label: "Fase 2: Dias 8–14", progress: ((day - 7) / 7) * 100, color: "bg-[#D35400]" }; // matching accent magenta
+    if (day <= 14) return { label: "Fase 2: Dias 8–14", progress: ((day - 7) / 7) * 100, color: "bg-accent" };
     return { label: "Fase 3: Dias 15–21", progress: ((day - 14) / 7) * 100, color: "bg-accent" };
   }, [currentDay]);
 
   return (
-    <div className="border-t border-border bg-card px-4 py-2">
+    <div className="shrink-0 border-t border-border bg-card px-4 py-2">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           Progresso da {phaseInfo.label}
@@ -557,11 +564,10 @@ function AppShell({
   const { user } = useAuthBootstrap();
   const actorId = user?.id || "guest";
   const diagnosisFresh = isDiagnosisCurrent(state);
-  const [moreOpen, setMoreOpen] = useState(false);
   return (
-    <div className="min-h-screen bg-background font-sans selection:bg-primary/10">
-      <div className="mx-auto flex min-h-screen max-w-[440px] flex-col shadow-[0_30px_90px_-20px_rgba(23,61,50,0.1)] sm:my-4 sm:min-h-[calc(100vh-2rem)] sm:rounded-2xl sm:border sm:border-border sm:bg-card">
-        <header className="sticky top-0 z-20 flex flex-col border-b border-border bg-card/80 backdrop-blur-md sm:rounded-t-2xl">
+    <div className="h-[100dvh] overflow-hidden bg-background font-sans selection:bg-primary/10">
+      <div className="mx-auto flex h-[100dvh] min-h-0 max-w-[440px] flex-col shadow-[0_30px_90px_-20px_rgba(23,61,50,0.1)] sm:my-4 sm:h-[calc(100dvh-2rem)] sm:rounded-2xl sm:border sm:border-border sm:bg-card">
+        <header className="sticky top-0 z-20 flex shrink-0 flex-col border-b border-border bg-card/80 backdrop-blur-md sm:rounded-t-2xl">
           <div className="flex items-center justify-between gap-3 px-4 py-4">
             <Link to="/" className="flex items-center" aria-label="PlantaeFert — Início">
               <PlantaefertLogo className="h-10 w-auto object-contain" />
@@ -609,7 +615,7 @@ function AppShell({
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto px-4 pb-28 pt-4">
+        <main className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-4 pb-28 pt-4 [-webkit-overflow-scrolling:touch]">
           <div className="relative space-y-6">
             {tab === "inicio" && userEmail && (
               <AccountMenu 
@@ -624,8 +630,8 @@ function AppShell({
         </main>
 
         <PhaseProgressBar currentDay={state.currentDay} />
-        <nav className="sticky bottom-0 z-20 border-t border-border bg-card/80 backdrop-blur-md sm:rounded-b-2xl">
-          <div className="grid grid-cols-5">
+        <nav className="sticky bottom-0 z-20 shrink-0 border-t border-border bg-card/90 shadow-[0_-8px_24px_-20px_rgba(21,95,78,0.45)] backdrop-blur-md sm:rounded-b-2xl">
+          <div className="relative grid h-[68px] grid-cols-5">
             <TabBtn
               active={tab === "inicio"}
               onClick={() => setTab("inicio")}
@@ -650,7 +656,8 @@ function AppShell({
             <TabBtn
               active={tab === "plano"}
               onClick={() => setTab("plano")}
-              icon={<CalendarCheck size={20} id="nav-plano" />}
+              featured
+              icon={<CalendarCheck size={22} id="nav-plano" />}
               label="Plano"
             />
             <TabBtn
@@ -663,7 +670,7 @@ function AppShell({
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-accent shadow-[0_0_8px_rgba(217,70,239,0.8)]"
+                      className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-card ring-2 ring-accent"
                     />
                   )}
                 </div>
@@ -671,61 +678,13 @@ function AppShell({
               label="Diagnóstico"
             />
             <TabBtn
-              active={tab === "diario" || tab === "aprender"}
-              onClick={() => setMoreOpen(true)}
-              icon={<MoreHorizontal size={20} />}
-              label="Mais"
-              ariaLabel="Mais: Diário e Dicas"
+              active={tab === "aprender"}
+              onClick={() => setTab("aprender")}
+              icon={<BookOpen size={20} />}
+              label="Dicas"
             />
           </div>
         </nav>
-
-        <AnimatePresence>
-          {moreOpen && (
-            <>
-              <motion.div
-                className="fixed inset-0 z-30 bg-black/40"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                onClick={() => setMoreOpen(false)}
-              />
-              <motion.div
-                role="dialog"
-                aria-label="Mais opções"
-                className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-[440px] rounded-t-3xl border border-border bg-card p-4 pb-6 shadow-2xl sm:mb-4 sm:rounded-3xl"
-                initial={{ y: "100%" }}
-                animate={{ y: 0 }}
-                exit={{ y: "100%" }}
-                transition={{ type: "spring", stiffness: 320, damping: 32 }}
-              >
-                <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted" />
-                <div className="grid grid-cols-2 gap-2">
-                  <MoreItem
-                    active={tab === "diario"}
-                    icon={<Images size={20} />}
-                    label="Diário"
-                    hint="Fotos e evolução"
-                    onClick={() => {
-                      setTab("diario");
-                      setMoreOpen(false);
-                    }}
-                  />
-                  <MoreItem
-                    active={tab === "aprender"}
-                    icon={<BookOpen size={20} />}
-                    label="Dicas"
-                    hint="Aprender sobre orquídeas"
-                    onClick={() => {
-                      setTab("aprender");
-                      setMoreOpen(false);
-                    }}
-                  />
-                </div>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
@@ -737,79 +696,64 @@ function TabBtn({
   icon,
   label,
   ariaLabel,
+  featured = false,
 }: {
   active: boolean;
   onClick: () => void;
   icon: ReactNode;
   label: string;
   ariaLabel?: string;
+  featured?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       aria-label={ariaLabel ?? label}
       aria-current={active ? "page" : undefined}
-      className={`relative flex min-h-[56px] flex-col items-center justify-center gap-1 py-2.5 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ${
-        active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-      }`}
+      className={cn(
+        "relative h-[68px] transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+        featured && "text-accent",
+        !featured && (active ? "text-primary" : "text-muted-foreground hover:text-foreground"),
+      )}
     >
-      <div className="relative">
+      <div
+        className={cn(
+          "absolute left-1/2 -translate-x-1/2",
+          featured ? "-top-4" : "top-1.5",
+        )}
+      >
         <span
-          className={`grid h-9 w-9 place-items-center rounded-xl transition-all duration-500 ${
-            active ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-110" : "bg-transparent"
-          }`}
+          className={cn(
+            "grid place-items-center transition-all duration-500",
+            featured
+              ? "h-[52px] w-[52px] rounded-full border-2 border-accent/40 bg-accent text-accent-foreground shadow-[0_10px_22px_-10px_rgba(156,47,111,0.75)] ring-1 ring-accent/25 hover:scale-105 hover:bg-accent/90"
+              : "h-9 w-9 rounded-xl",
+            !featured && (active ? "scale-105 bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-transparent"),
+            featured && active && "ring-2 ring-accent/50",
+          )}
         >
           {icon}
         </span>
         {active && (
           <motion.div
             layoutId="tabGlow"
-            className="absolute -inset-1 z-[-1] rounded-2xl bg-primary/10 blur-md"
+            className={cn(
+              "absolute -inset-1 z-[-1] blur-md",
+              featured ? "rounded-full bg-accent/25" : "rounded-2xl bg-primary/10",
+            )}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           />
         )}
       </div>
       <span
-        className={`text-[11px] font-bold uppercase tracking-wide transition-opacity duration-300 ${
-          active ? "opacity-100" : "opacity-60"
-        }`}
+        className={cn(
+          "absolute inset-x-0 bottom-1.5 whitespace-nowrap text-center text-[11px] font-bold uppercase tracking-wide transition-opacity duration-300",
+          featured && "text-accent opacity-100",
+          !featured && (active ? "opacity-100" : "opacity-60"),
+        )}
       >
         {label}
       </span>
-    </button>
-  );
-}
-
-function MoreItem({
-  active,
-  icon,
-  label,
-  hint,
-  onClick,
-}: {
-  active: boolean;
-  icon: ReactNode;
-  label: string;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={`flex flex-col items-start gap-1.5 rounded-2xl border p-4 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        active ? "border-primary/40 bg-primary/5" : "border-border bg-card hover:bg-muted"
-      }`}
-    >
-      <span
-        className={`grid h-10 w-10 place-items-center rounded-xl ${
-          active ? "bg-primary text-primary-foreground" : "bg-secondary text-primary"
-        }`}
-      >
-        {icon}
-      </span>
-      <span className="text-sm font-semibold text-foreground">{label}</span>
-      <span className="text-[11px] leading-tight text-muted-foreground">{hint}</span>
     </button>
   );
 }
@@ -1009,7 +953,7 @@ function SignupScreen({
             onNext();
           }}
           disabled={!canSave}
-          className="mt-8 w-full rounded-full bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.98] disabled:opacity-40"
+          className="mt-8 w-full rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-accent-foreground shadow-sm shadow-accent/20 transition-transform active:scale-[0.98] disabled:opacity-40"
         >
           Salvar e fazer diagnóstico
         </button>
@@ -1226,7 +1170,7 @@ function DiagnosisScreen({ actorId, onFinish, onBack }: { actorId: string; onFin
           </button>
           <button
             onClick={onFinish}
-            className="ml-auto flex items-center gap-1 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ml-auto flex items-center gap-1 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Ver resultado <ChevronRight size={16} />
           </button>
@@ -1327,7 +1271,7 @@ function DiagnosisResultScreen({ actorId, onBack, onFinish }: { actorId: string;
           {result && (
             <button
               onClick={onFinish}
-              className="ml-auto flex items-center gap-1 rounded-full bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="ml-auto flex items-center gap-1 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               Ver meu acompanhamento <ChevronRight size={16} />
             </button>
@@ -1362,30 +1306,17 @@ function ResultBlocks({
   // Health score e veredito vêm do motor (fonte única de verdade — diagnosis-matrix.ts).
   const score = result.healthScore;
   const scoreStatus = result.healthStatus;
-  const scoreColor = scoreStatus.tone === "warn" ? "text-accent" : "text-primary";
-  const scoreBgCls =
-    scoreStatus.tone === "warn"
-      ? "border-accent/40 bg-gradient-to-br from-accent/10 to-accent/5"
-      : scoreStatus.tone === "green"
-        ? "border-primary/25 bg-gradient-to-br from-secondary/60 to-secondary/30"
-        : "border-primary/20 bg-gradient-to-br from-lilac/60 to-lilac/20";
+  const scoreColor = "text-accent";
+  const scoreBgCls = "border-accent/45 bg-gradient-to-br from-accent/[0.15] via-accent/[0.07] to-card shadow-[0_10px_28px_-18px_rgba(156,47,111,0.55)] ring-1 ring-accent/10";
 
   return (
     <div className="mt-5 space-y-3">
       {hasAny && (
-        <DiagnosisSummaryChecklist
-          score={score}
-          statusLabel={scoreStatus.label}
-          priorities={priorities}
-          adjustments={adjustments}
-        />
-      )}
-      {hasAny && (
         <div className={`rounded-2xl border p-4 ${scoreBgCls}`}>
           <div className="flex items-center gap-4">
-            <div className="relative grid h-20 w-20 shrink-0 place-items-center rounded-full bg-card shadow-inner">
+            <div className="relative grid h-20 w-20 shrink-0 place-items-center rounded-full bg-card shadow-inner ring-1 ring-accent/15">
               <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" strokeWidth="6" className="text-muted opacity-40" />
+                <circle cx="40" cy="40" r="34" fill="none" stroke="currentColor" strokeWidth="6" className="text-accent/15" />
                 <motion.circle
                   cx="40"
                   cy="40"
@@ -1402,40 +1333,40 @@ function ResultBlocks({
               </svg>
               <div className="text-center">
                 <div className={`font-display text-2xl leading-none ${scoreColor}`}>{score}</div>
-                <div className="text-[9px] uppercase tracking-wider text-muted-foreground">saúde</div>
+                <div className="text-[9px] font-bold uppercase tracking-wider text-accent/70">saúde</div>
               </div>
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Veredito</div>
+              <div className="text-[11px] font-bold uppercase tracking-wider text-accent/70">Veredito</div>
               <div className={`font-display text-lg leading-tight ${scoreColor}`}>{scoreStatus.label}</div>
-              <p className="mt-1 text-xs text-foreground/80">{scoreStatus.message}</p>
+              <p className="mt-1 text-xs leading-relaxed text-accent/80">{scoreStatus.message}</p>
             </div>
           </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-lg bg-card/70 py-2">
+            <div className="rounded-lg border border-accent/10 bg-card/80 py-2">
               <div className="text-lg font-bold text-accent">{priorities.length}</div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">prioridades</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-accent/65">prioridades</div>
             </div>
-            <div className="rounded-lg bg-card/70 py-2">
-              <div className="text-lg font-bold text-primary">{adjustments.length}</div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">ajustes</div>
+            <div className="rounded-lg border border-accent/10 bg-card/80 py-2">
+              <div className="text-lg font-bold text-accent">{adjustments.length}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-accent/65">ajustes</div>
             </div>
-            <div className="rounded-lg bg-card/70 py-2">
-              <div className="text-lg font-bold text-primary">{favorable.length}</div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">favoráveis</div>
+            <div className="rounded-lg border border-accent/10 bg-card/80 py-2">
+              <div className="text-lg font-bold text-accent">{favorable.length}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-accent/65">favoráveis</div>
             </div>
           </div>
           {nextSteps.length > 0 && (
-            <div className="mt-3 rounded-xl border border-border/60 bg-card/80 p-3">
-              <div className="text-xs font-bold uppercase tracking-wider text-primary">Próximos passos</div>
-              <ol className="mt-2 space-y-2 text-sm text-foreground">
+            <div className="mt-3 rounded-xl border border-accent/15 bg-card/85 p-3">
+              <div className="text-xs font-bold uppercase tracking-wider text-accent">Próximos passos</div>
+              <ol className="mt-2 space-y-2 text-sm text-accent/80">
                 {nextSteps.map((s, i) => (
                   <li key={s.id} className="flex gap-2">
-                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">
+                    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-accent text-[11px] font-bold text-accent-foreground">
                       {i + 1}
                     </span>
                     <span>
-                      <strong>{s.title}.</strong> {s.action}
+                      <strong className="text-accent">{s.title}.</strong> {s.action}
                     </span>
                   </li>
                 ))}
@@ -1443,6 +1374,14 @@ function ResultBlocks({
             </div>
           )}
         </div>
+      )}
+      {hasAny && (
+        <DiagnosisSummaryChecklist
+          score={score}
+          statusLabel={scoreStatus.label}
+          priorities={priorities}
+          adjustments={adjustments}
+        />
       )}
       {insights.length > 0 && (
         <div className="space-y-2">
@@ -1819,6 +1758,17 @@ function InfoCard({
   );
 }
 
+/* ---------------- Sistema visual de cards ---------------- */
+
+const APP_CARD_BASE = "rounded-2xl border border-primary/25 bg-primary/[0.04] shadow-sm";
+const APP_CARD_INTERACTIVE = `${APP_CARD_BASE} transition-all hover:border-primary/40 hover:bg-primary/[0.06] active:scale-[0.99]`;
+const APP_CARD_FEATURED = "rounded-2xl border-2 border-accent/50 bg-gradient-to-br from-accent/[0.16] via-accent/[0.05] to-card shadow-[0_10px_32px_-14px_rgba(156,47,111,0.36)] ring-1 ring-accent/15";
+const APP_CARD_GREEN_FEATURED = "rounded-2xl border-2 border-primary/45 bg-gradient-to-br from-primary/[0.14] via-primary/[0.04] to-card shadow-[0_10px_32px_-14px_rgba(21,95,78,0.34)] ring-1 ring-primary/15";
+const APP_CARD_ACCENT_LAYER = "border-2 border-accent/50 bg-gradient-to-br from-accent/[0.16] via-accent/[0.05] to-card shadow-[0_10px_32px_-14px_rgba(156,47,111,0.36)] ring-1 ring-accent/15";
+const APP_CARD_INNER = "rounded-xl border border-primary/15 bg-card shadow-[0_4px_14px_-10px_rgba(21,95,78,0.45)]";
+const APP_CARD_INNER_HOVER = `${APP_CARD_INNER} transition-all hover:border-primary/35 hover:bg-primary/[0.06] hover:shadow-sm`;
+const APP_CARD_INNER_INTERACTIVE = `${APP_CARD_INNER_HOVER} active:scale-[0.99]`;
+
 /* ---------------- Início ---------------- */
 
 function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t: Tab) => void; setStatus: (s: AuthBootstrapStatus) => void }) {
@@ -1978,7 +1928,6 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
     description: string;
     icon: ReactNode;
     onClick: () => void;
-    highlighted?: boolean;
   };
 
   const nextCareItems: NextCareItem[] = [];
@@ -1990,7 +1939,6 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
       title: `Conclua os cuidados do Dia ${day}`,
       description: `Ainda falta ${formatCareList(pendingCareLabels)}.`,
       icon: <CheckSquare size={17} />,
-      highlighted: true,
       onClick: handleRedirectToPlan,
     });
   }
@@ -2062,7 +2010,10 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               initialFlowCard.open();
             }
           }}
-          className="group relative w-full cursor-pointer overflow-hidden rounded-2xl border-2 border-accent bg-gradient-to-br from-accent/20 via-accent/5 to-transparent p-6 text-left shadow-lg shadow-accent/10 transition-all active:scale-[0.99]"
+          className={cn(
+            APP_CARD_FEATURED,
+            "group relative w-full cursor-pointer overflow-hidden p-6 text-left transition-all hover:border-accent/65 hover:from-accent/20 active:scale-[0.99]",
+          )}
         >
           <div className="relative z-10">
             <div className="flex items-center justify-between">
@@ -2077,19 +2028,19 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
             <h3 className="mt-3 font-display text-2xl leading-tight text-primary">
               {initialFlowCard.title}
             </h3>
-            <p className="mt-2 text-sm leading-relaxed text-primary/75">
+            <p className="mt-2 text-sm leading-relaxed text-foreground/75">
               {initialFlowCard.description}
             </p>
             <div className="mt-5 flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform group-hover:scale-110">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-sm transition-transform group-hover:scale-105">
                 {initialFlowCard.icon}
               </div>
-              <span className="font-bold text-primary group-hover:underline">
+              <span className="font-bold text-accent group-hover:underline">
                 {initialFlowCard.action}
               </span>
             </div>
           </div>
-          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/10 blur-2xl transition-all group-hover:bg-accent/20" />
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/15 blur-2xl transition-all group-hover:bg-accent/25" />
         </div>
       )}
 
@@ -2201,29 +2152,25 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               }
             }}
             className={cn(
-              "group relative w-full cursor-pointer overflow-hidden rounded-2xl border-2 p-5 text-left shadow-sm transition-all active:scale-[0.99]",
-              isApplicationDay 
-                ? [3, 10, 17].includes(day)
-                  ? "border-accent bg-gradient-to-br from-accent/20 via-accent/10 to-transparent shadow-xl shadow-accent/10 ring-2 ring-accent animate-[pulse_3s_ease-in-out_infinite]"
-                  : "border-accent/40 bg-gradient-to-br from-accent/10 via-accent/5 to-transparent shadow-lg shadow-accent/5 ring-1 ring-accent/20" 
-                : "border-primary/20 bg-gradient-to-br from-primary/[0.04] to-transparent hover:border-primary/40"
+              APP_CARD_INTERACTIVE,
+              APP_CARD_ACCENT_LAYER,
+              "group relative w-full cursor-pointer overflow-hidden p-5 text-left",
+              isApplicationDay && [3, 10, 17].includes(day)
+                ? "border-accent/60 from-accent/20 shadow-[0_12px_36px_-13px_rgba(156,47,111,0.44)] ring-accent/20 animate-[pulse_3s_ease-in-out_infinite] hover:border-accent/70 hover:from-accent/[0.23]"
+                : "hover:border-accent/65 hover:from-accent/20"
             )}
           >
-            {isApplicationDay && (
-               <div className="absolute inset-0 pointer-events-none">
-                 <div className="absolute inset-0 bg-accent/5 animate-pulse" />
-                 <div className="absolute -inset-1 bg-accent/10 blur-2xl opacity-50" />
-               </div>
-            )}
-
             <div className="relative z-10">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-primary/60">
+                <div className="flex items-center gap-2 text-accent">
                   <Sparkles size={14} />
                   <span className="text-[10px] font-bold uppercase tracking-widest">{ctx.eyebrow}</span>
                 </div>
                 {isApplicationDay && (
-                  <span className="flex items-center gap-1 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold text-accent animate-pulse">
+                  <span className={cn(
+                    "flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent",
+                    [3, 10, 17].includes(day) && "animate-pulse",
+                  )}>
                      <Droplets size={10} />
                      Aplicação
                   </span>
@@ -2243,9 +2190,9 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                     <span>Progresso do plano</span>
                     <span>Dia {day} de 21</span>
                   </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-accent/15">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-accent to-primary transition-all"
+                      className="h-full rounded-full bg-accent transition-all"
                       style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
                     />
                   </div>
@@ -2336,7 +2283,10 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                   }
                   ctx.cta.onClick(); 
                 }}
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent px-6 py-3 text-sm font-bold text-accent-foreground shadow-sm transition-all hover:brightness-110 active:scale-[0.98]"
+                className={cn(
+                  "mt-4 flex w-full items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-bold shadow-sm transition-all hover:brightness-110 active:scale-[0.98]",
+                  "bg-accent text-accent-foreground",
+                )}
               >
                 {ctx.cta.icon}
                 {ctx.cta.label}
@@ -2344,7 +2294,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               
               <div className="mt-2 text-center">
                  <span className="text-[10px] font-medium text-muted-foreground/80 italic">
-                   Etapa atual: <span className="text-accent/90 font-bold">Dia {day}</span> • {getProtocolDay(day).title}
+                   Etapa atual: <span className="font-bold text-accent">Dia {day}</span> • {getProtocolDay(day).title}
                  </span>
               </div>
             </div>
@@ -2353,7 +2303,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
       })()}
 
 
-      <div className="group relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/15 via-primary/8 to-primary/[0.03] shadow-lg shadow-primary/10 transition-all hover:border-primary/60 hover:shadow-primary/20">
+      <div className={cn(APP_CARD_GREEN_FEATURED, "group relative overflow-hidden transition-all hover:border-primary/60 hover:from-primary/[0.18] hover:shadow-[0_12px_36px_-14px_rgba(21,95,78,0.4)] active:scale-[0.99]")}>
             <div className="relative w-full overflow-hidden">
               <img
                 src={kitMetodo}
@@ -2365,7 +2315,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
             </div>
             <div className="relative z-10 p-6">
               <div className="flex items-center gap-2 text-primary">
-                <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-md shadow-primary/30">
+                <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/15 text-primary shadow-sm">
                   <Sprout size={18} />
                 </div>
                 <h3 className="font-display text-xl text-primary">Método de 2 Passos</h3>
@@ -2376,13 +2326,13 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   onClick={() => setTab("metodo")}
-                  className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/30 transition-all hover:brightness-110 active:scale-[0.98]"
+                  className="flex items-center gap-2 rounded-full bg-accent px-5 py-2 text-xs font-bold text-accent-foreground shadow-sm shadow-accent/20 transition-all hover:brightness-110 active:scale-[0.98]"
                 >
                   Ver explicação <ChevronRight size={14} />
                 </button>
                 <button
                   onClick={() => setTab("metodo")}
-                  className="flex items-center gap-2 rounded-full border-2 border-primary bg-primary/5 px-5 py-2 text-xs font-bold text-primary transition-all hover:bg-primary/15 active:scale-[0.98]"
+                  className="flex items-center gap-2 rounded-full border border-primary/30 bg-card px-5 py-2 text-xs font-bold text-primary transition-all hover:bg-primary/5 active:scale-[0.98]"
                 >
                   Modo de usar <ChevronRight size={14} />
                 </button>
@@ -2401,7 +2351,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
 
           <div 
             onClick={handleRedirectToPlan}
-            className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-plantae-cream/40 p-4 sm:p-5 transition-all hover:border-primary/30 active:scale-[0.99]"
+            className={cn(APP_CARD_INTERACTIVE, "group relative cursor-pointer overflow-hidden p-4 sm:p-5")}
           >
             <div className="flex items-center gap-3">
               <div className="grid h-12 w-12 sm:h-14 sm:w-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-card transition-transform group-hover:scale-105">
@@ -2419,23 +2369,23 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                 <p className="text-xs font-medium text-foreground/80 line-clamp-1">
                   {getProtocolDay(day).mainAction}
                 </p>
-                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-accent/10">
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-primary/10">
                   <div
-                    className="h-full rounded-full bg-accent transition-all duration-1000"
+                    className="h-full rounded-full bg-primary transition-all duration-1000"
                     style={{ width: `${Math.round(((day - 1) / 21) * 100)}%` }}
                   />
                 </div>
               </div>
               <button 
                 onClick={handleRedirectToPlan}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground shadow-md transition-transform active:scale-90 hover:brightness-110"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground shadow-sm shadow-accent/20 transition-transform active:scale-90 hover:brightness-110"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm">
+          <div className={cn(APP_CARD_BASE, "p-4 sm:p-5")}>
             <div className="flex items-center gap-3">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
                 <FileText size={18} />
@@ -2455,7 +2405,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
 
           {/* Cuidados híbridos: pendências reais, próximo marco e diagnóstico. */}
           {nextCareItems.length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm">
+            <div className={cn(APP_CARD_BASE, "p-4 sm:p-5")}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-primary">
@@ -2479,18 +2429,11 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                     key={care.id}
                     onClick={care.onClick}
                     className={cn(
-                      "group/care flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all active:scale-[0.99]",
-                      care.highlighted
-                        ? "border-accent/30 bg-accent/[0.07] hover:bg-accent/10"
-                        : "border-border/60 bg-background hover:border-primary/20 hover:bg-primary/[0.03]",
+                      APP_CARD_INNER_INTERACTIVE,
+                      "group/care flex w-full items-center gap-3 p-3 text-left",
                     )}
                   >
-                    <div
-                      className={cn(
-                        "grid h-10 w-10 shrink-0 place-items-center rounded-lg",
-                        care.highlighted ? "bg-accent/15 text-accent" : "bg-primary/[0.06] text-primary",
-                      )}
-                    >
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover/care:bg-primary/15">
                       {care.icon}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -2521,7 +2464,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               tabIndex={0}
               onClick={handleRedirectToPlan}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRedirectToPlan(); }}
-              className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/40 active:scale-[0.99]"
+              className={cn(APP_CARD_INTERACTIVE, "group relative cursor-pointer overflow-hidden p-5 hover:border-primary/40")}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-primary">
@@ -2534,17 +2477,17 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                 {hasPendencies ? "Você tem pendências" : "Dia em dia"}
               </h3>
               <div className="mt-3 grid grid-cols-3 gap-2">
-                <div className="rounded-xl bg-primary/[0.04] p-3 text-center">
+                <div className={cn(APP_CARD_INNER, "p-3 text-center")}>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tarefas</div>
                   <div className="mt-1 font-display text-2xl text-primary">
                     {doneTasks}<span className="text-primary/40">/{totalTasks || "—"}</span>
                   </div>
                 </div>
-                <div className="rounded-xl bg-accent/[0.08] p-3 text-center">
+                <div className={cn(APP_CARD_INNER, "p-3 text-center")}>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Aplicações</div>
                   <div className="mt-1 font-display text-2xl text-accent">{appsDoneToday}</div>
                 </div>
-                <div className="rounded-xl bg-primary/[0.04] p-3 text-center">
+                <div className={cn(APP_CARD_INNER, "p-3 text-center")}>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Registro</div>
                   <div className="mt-1 font-display text-2xl text-primary">{noteDone ? "✓" : "—"}</div>
                 </div>
@@ -2598,7 +2541,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                   "mt-2 flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all active:scale-[0.98]",
                   dayFullyDone
                     ? "cursor-not-allowed border border-primary/20 bg-primary/[0.06] text-primary/60"
-                    : "border border-primary bg-primary text-primary-foreground shadow-md hover:bg-primary/90",
+                    : "border border-accent bg-accent text-accent-foreground shadow-md shadow-accent/20 hover:bg-accent/90",
                 )}
               >
                 <div className="flex items-center gap-2">
@@ -2610,10 +2553,10 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
             </div>
           )}
 
-          <div className="group relative overflow-hidden rounded-2xl border border-primary/20 bg-primary/[0.02] p-4 transition-all hover:border-primary/40">
+          <div className={cn(APP_CARD_BASE, "group relative overflow-hidden p-4 transition-all hover:border-primary/30")}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-primary">
-                <Bell size={14} className="animate-pulse" />
+                <Bell size={14} />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-primary">Lembretes & Notificações</span>
               </div>
               <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
@@ -2630,11 +2573,11 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                     Notification.requestPermission();
                   }
                 }}
-                className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition-all active:scale-[0.98] hover:brightness-110"
+                className="flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-xs font-bold text-accent-foreground shadow-sm shadow-accent/20 transition-all active:scale-[0.98] hover:brightness-110"
               >
                 <Bell size={14} /> Ativar Notificações Push
               </button>
-              <div className="flex items-center gap-3 rounded-xl border border-primary/15 bg-background p-3">
+              <div className={cn(APP_CARD_INNER_HOVER, "group/reminder flex items-center gap-3 p-3")}>
                 <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/[0.06] text-primary">
                   <Clock size={16} />
                 </div>
@@ -2646,7 +2589,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                   type="time"
                   value={reminderTime}
                   onChange={(e) => updateSettings({ reminderTime: e.target.value }, actorId)}
-                  className="rounded-lg border border-primary/20 bg-background px-2 py-1.5 text-sm font-bold text-primary focus:border-primary focus:outline-none"
+                  className="rounded-lg border border-primary/20 bg-card px-2 py-1.5 text-sm font-bold text-primary transition-colors group-hover/reminder:border-primary/35 focus:border-primary focus:outline-none"
                 />
               </div>
             </div>
@@ -2655,13 +2598,13 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
           <div className="mt-3 flex flex-col items-center gap-2">
             <button
               onClick={handleRedirectToPlan}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-8 py-4 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/20 transition-all hover:brightness-110 active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-accent px-8 py-4 text-sm font-bold text-accent-foreground shadow-sm shadow-accent/20 transition-all hover:brightness-110 active:scale-[0.98]"
             >
               <Calendar size={18} />
               Continuar meu plano · Dia {day}
             </button>
             <span className="text-[10px] font-medium text-muted-foreground text-center">
-              Você está no <span className="font-bold text-accent">Dia {day}</span>: {getProtocolDay(day).title}
+              Você está no <span className="font-bold text-primary">Dia {day}</span>: {getProtocolDay(day).title}
             </span>
           </div>
         </>
@@ -2743,7 +2686,7 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
         particleCount: 150,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ["#D35400", "#155F4E", "#F8F5EE", "#FDF2F8"],
+        colors: ["#9C2F6F", "#155F4E", "#F8F5EE", "#F8EAF2"],
       });
       toast.success(
         day === 7
@@ -2771,7 +2714,7 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
 
   return (
     <div ref={containerRef} className="space-y-4">
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
+      <div className={cn(APP_CARD_FEATURED, "relative overflow-hidden p-6")}>
         <div className="absolute -right-4 -top-4 opacity-[0.04] text-primary rotate-12">
           <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
              <path d="M50 10C50 10 30 40 30 60C30 80 50 95 50 95C50 95 70 80 70 60C70 40 50 10 50 10Z" stroke="currentColor" strokeWidth="1"/>
@@ -2857,7 +2800,7 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
           </p>
           <button
             onClick={() => setStatus("needs_diagnosis")}
-            className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-md transition-transform active:scale-95"
+            className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-bold text-accent-foreground shadow-md shadow-accent/20 transition-transform active:scale-95"
           >
             Fazer diagnóstico agora
             <ChevronRight size={16} />
@@ -2892,7 +2835,7 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
         </button>
       )}
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className={cn(APP_CARD_BASE, "p-5")}>
         <div className="grid gap-2">
           {meta.checklist.map((item) => {
             const checked = !!entry.checklist[item];
@@ -2907,11 +2850,12 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
                   if (!checked) playPopSound();
                 }}
                 aria-pressed={checked}
-                className={`flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-xl border px-4 py-3 text-left text-sm transition-all",
                   checked
                     ? "border-primary bg-primary/5 text-primary"
-                    : "border-border bg-card text-foreground"
-                }`}
+                    : `${APP_CARD_INNER_INTERACTIVE} text-foreground`,
+                )}
               >
                 <div className="mt-0.5 shrink-0">
                   {checked ? (
@@ -2952,7 +2896,7 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
               }
               completeCurrentDay();
             }}
-            className="mt-4 w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mt-4 w-full rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Concluir dia
           </button>
@@ -2985,7 +2929,7 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
               </button>
               <button
                 onClick={completeCurrentDay}
-                className="rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
+                className="rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 transition-transform active:scale-[0.98]"
               >
                 Concluir mesmo assim
               </button>
@@ -3018,7 +2962,7 @@ function PlanoTab({ actorId, setTab, onPreviewDay, setStatus }: PlanoTabProps) {
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <button
                 onClick={goToNextDay}
-                className="flex items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-transform active:scale-[0.98]"
+                className="flex items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 transition-transform active:scale-[0.98]"
               >
                 {day === 21 ? "Ver meu resultado final" : `Ir para o Dia ${day + 1}`}
                 <ChevronRight size={15} />
@@ -3204,7 +3148,7 @@ function WeekPicker({
                     ? "border-primary/20 bg-primary/5 text-primary/80"
                     : isFocus
                       ? "border-accent/60 bg-accent/5 text-foreground hover:border-accent"
-                      : "border-border bg-card text-foreground hover:border-primary/40"
+                      : "border-primary/15 bg-card text-foreground hover:border-primary/35 hover:bg-primary/[0.06] hover:shadow-sm"
               }`}
             >
               <div className="flex flex-col items-center gap-0.5">
@@ -3274,7 +3218,7 @@ function WeekPicker({
 function DayHeaderCard({ meta }: { meta: ProtocolDay }) {
   const phase = phaseOf(meta.day);
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5">
+    <div className={cn(APP_CARD_GREEN_FEATURED, "relative overflow-hidden p-5")}>
       <div className="absolute -right-6 -top-6 opacity-[0.05] text-primary rotate-12">
         <Sprout size={100} />
       </div>
@@ -3318,7 +3262,7 @@ function DayContentCard({
   void entry;
   const tracking = diagnosisFresh ? trackingPoints.slice(0, 3) : [];
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-5">
+    <div className={cn(APP_CARD_GREEN_FEATURED, "relative overflow-hidden p-5")}>
       <div className="absolute -right-6 -top-6 opacity-[0.05] text-primary rotate-12">
         <Leaf size={100} />
       </div>
@@ -3378,7 +3322,7 @@ function StagesList({
             key={stage.id}
             value={stage.id}
             data-checklist-item
-            className="overflow-hidden rounded-xl border border-border bg-card"
+            className={cn(APP_CARD_INNER_HOVER, "overflow-hidden")}
           >
 
             <AccordionTrigger className="px-5 py-4 text-left text-[15px] font-semibold text-primary hover:no-underline group">
@@ -3542,7 +3486,7 @@ function DetailAccordions({
         <AccordionItem
           key={s.id}
           value={s.id}
-          className="overflow-hidden rounded-2xl border border-border bg-background/40"
+            className={cn(APP_CARD_INNER_HOVER, "overflow-hidden")}
         >
           <AccordionTrigger className="px-4 py-3 text-[14px] font-semibold text-primary hover:no-underline">
             {s.title}
@@ -3769,7 +3713,7 @@ function MethodDrawer({ actorId, day, onClose }: { actorId: string; day: number;
             registerApplication(day, actorId);
             onClose();
           }}
-          className="w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="w-full rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           {applicationsForDay.length > 0
             ? "Registrar nova aplicação"
@@ -3793,7 +3737,7 @@ function DiagnosticoTab({ actorId, onRedo, setTab }: { actorId: string; onRedo: 
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
+      <div className={cn(APP_CARD_FEATURED, "relative overflow-hidden p-6")}>
         <div className="absolute -right-4 -top-4 opacity-[0.08] text-primary rotate-12">
           <Stethoscope size={120} />
         </div>
@@ -3814,7 +3758,7 @@ function DiagnosticoTab({ actorId, onRedo, setTab }: { actorId: string; onRedo: 
       )}
 
       {items.map((it) => (
-        <div key={it.key} className="rounded-2xl border border-border bg-card p-4">
+        <div key={it.key} className={cn(APP_CARD_BASE, "p-4")}>
           <div className="text-sm font-bold text-primary">{it.label}</div>
           {it.values.length === 0 ? (
             <p className="mt-1 text-sm text-muted-foreground">Nada marcado.</p>
@@ -3838,7 +3782,7 @@ function DiagnosticoTab({ actorId, onRedo, setTab }: { actorId: string; onRedo: 
       <div className="space-y-3">
         <button
           onClick={onRedo}
-          className="w-full rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-all active:scale-[0.98]"
+          className="w-full rounded-full bg-accent px-4 py-3 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 transition-all active:scale-[0.98]"
         >
           Refazer diagnóstico
         </button>
@@ -3968,7 +3912,7 @@ function DiarioTab({ actorId }: { actorId: string }) {
 
   return (
     <div className="space-y-4">
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card p-6">
+      <div className={cn(APP_CARD_FEATURED, "relative overflow-hidden p-6")}>
         <div className="absolute -right-4 -top-4 opacity-[0.08] text-primary rotate-12">
           <Images size={120} />
         </div>
@@ -3987,7 +3931,7 @@ function DiarioTab({ actorId }: { actorId: string }) {
         {PHOTO_DAYS.map((d: number) => {
           const entry = state.days[d] ?? { checklist: {}, note: "", completed: false };
           return (
-            <div key={d} className="relative overflow-hidden rounded-2xl border border-border bg-card p-4">
+            <div key={d} className={cn(APP_CARD_BASE, "relative overflow-hidden p-4")}>
               <div className="absolute -right-6 -top-6 opacity-[0.03] text-primary rotate-12">
                 <Camera size={80} />
               </div>
@@ -4134,7 +4078,7 @@ function FinalEvaluation({ actorId }: { actorId: string }) {
   ];
 
   return (
-    <div className="rounded-3xl border border-border bg-card p-5">
+    <div className={cn(APP_CARD_BASE, "rounded-3xl p-5")}>
       <div className="text-xs font-bold uppercase tracking-wider text-accent">Avaliação final</div>
       <h2 className="mt-1 text-lg font-bold text-primary">Reflexão <span className="font-display text-2xl text-accent">Final</span></h2>
 
@@ -4283,7 +4227,7 @@ function AprenderTab({ setTab }: { setTab: (tab: any) => void }) {
 
   return (
     <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-[2rem] border border-primary/10 bg-gradient-to-br from-primary/[0.03] to-transparent p-8">
+      <div className={cn(APP_CARD_FEATURED, "relative overflow-hidden rounded-[2rem] p-8")}>
         <div className="absolute -right-8 -top-8 opacity-[0.05] text-primary rotate-12">
           <BookOpen size={160} />
         </div>
@@ -4306,7 +4250,7 @@ function AprenderTab({ setTab }: { setTab: (tab: any) => void }) {
           <button
             key={l.id}
             onClick={() => setOpen(l.id)}
-            className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
+            className={cn(APP_CARD_INTERACTIVE, "group relative flex items-center gap-4 overflow-hidden p-4 hover:shadow-md")}
           >
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
               {l.icon}
@@ -4322,7 +4266,7 @@ function AprenderTab({ setTab }: { setTab: (tab: any) => void }) {
 
       <div 
         onClick={() => setTab("metodo")}
-        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/[0.05] to-transparent p-5 transition-all hover:border-primary/40 active:scale-[0.99]"
+        className={cn(APP_CARD_GREEN_FEATURED, "group relative cursor-pointer overflow-hidden p-5 transition-all hover:border-primary/60 active:scale-[0.99]")}
       >
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary transition-transform group-hover:scale-110">
@@ -4392,7 +4336,7 @@ function MetodoContent() {
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="relative overflow-hidden rounded-[2rem] border border-primary/10 bg-gradient-to-br from-primary/[0.03] to-transparent p-8">
+      <div className={cn(APP_CARD_FEATURED, "relative overflow-hidden rounded-[2rem] p-8")}>
         <div className="absolute -right-8 -top-8 opacity-[0.05] text-primary rotate-12">
           <Sparkles size={160} />
         </div>
@@ -4411,7 +4355,7 @@ function MetodoContent() {
       </div>
 
       <div className="space-y-4">
-        <div className="relative group overflow-hidden rounded-3xl border border-primary/20 bg-card p-6 shadow-sm">
+        <div className={cn(APP_CARD_GREEN_FEATURED, "relative group overflow-hidden rounded-3xl p-6")}>
           {/* Ilustração Botânica Linear - Enraizar */}
           <div className="absolute -right-4 -top-4 opacity-[0.07] pointer-events-none group-hover:scale-110 transition-transform duration-700">
             <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
@@ -4488,7 +4432,7 @@ function MetodoContent() {
           </div>
         </div>
 
-        <div className="relative group overflow-hidden rounded-3xl border border-accent/20 bg-card p-6 shadow-sm">
+        <div className={cn(APP_CARD_FEATURED, "relative group overflow-hidden rounded-3xl p-6")}>
           {/* Ilustração Botânica Linear - Nutrir */}
           <div className="absolute -right-4 -top-4 opacity-[0.07] pointer-events-none group-hover:scale-110 transition-transform duration-700">
             <svg width="120" height="120" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-accent">
@@ -4565,7 +4509,7 @@ function MetodoContent() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-secondary/30 p-5">
+      <div className={cn(APP_CARD_BASE, "p-5")}>
         <h3 className="text-sm font-bold text-primary">Por que em 21 dias?</h3>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           As orquídeas têm um metabolismo lento. 21 dias é o tempo ideal para que a planta processe os estímulos do enraizamento e comece a responder visualmente à nutrição, criando uma base sólida para o desenvolvimento contínuo.
@@ -4777,7 +4721,7 @@ function ResumoTab({ actorId }: { actorId: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className={cn(APP_CARD_FEATURED, "p-6")}>
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
             <FileText size={20} />
@@ -4796,7 +4740,7 @@ function ResumoTab({ actorId }: { actorId: string }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className={cn(APP_CARD_BASE, "p-6")}>
         <h3 className="text-sm font-bold text-primary">Exportar Dados</h3>
         <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
           Revise a pré-visualização do relatório antes de baixar ou gere o PDF completo com todos os registros, observações e fotos.
@@ -4823,7 +4767,7 @@ function ResumoTab({ actorId }: { actorId: string }) {
           <button
             onClick={generatePDF}
             disabled={isGenerating}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3.5 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/20 transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
           >
             {isGenerating ? (
               <>
@@ -4840,7 +4784,7 @@ function ResumoTab({ actorId }: { actorId: string }) {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border bg-card p-5">
+      <div className={cn(APP_CARD_BASE, "p-5")}>
         <h3 className="mb-4 text-sm font-bold text-primary">Linha do Tempo</h3>
         <div className="space-y-4">
           {[1, 2, 3].map((weekNum) => {
@@ -4895,7 +4839,7 @@ function ResumoTab({ actorId }: { actorId: string }) {
                 <a
                   href={previewUrl}
                   download={protocolPdfFilename(state)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-all hover:brightness-110"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-2 text-xs font-bold text-accent-foreground shadow-sm shadow-accent/20 transition-all hover:brightness-110"
                 >
                   <Download size={14} />
                   Baixar
@@ -4923,7 +4867,7 @@ function ResumoTab({ actorId }: { actorId: string }) {
 
 function StatCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
   return (
-    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+    <div className={cn(APP_CARD_INNER, "p-3")}>
       <div className="flex items-center gap-1.5 text-muted-foreground">
         {icon}
         <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
@@ -5028,7 +4972,7 @@ function DayPreviewModal({
           <div className="mt-8 flex flex-col gap-3">
             <button
               onClick={onSelect}
-              className="w-full rounded-2xl bg-primary py-4 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:brightness-110 active:scale-[0.98]"
+              className="w-full rounded-2xl bg-accent py-4 text-sm font-bold text-accent-foreground shadow-lg shadow-accent/20 transition-all hover:brightness-110 active:scale-[0.98]"
             >
               Começar este dia agora
             </button>
@@ -5129,9 +5073,9 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Header/Identidade */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className={cn(APP_CARD_FEATURED, "order-1 p-6")}>
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">
             {plant.photo ? (
@@ -5159,7 +5103,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
       </div>
 
       {/* Resumo de Progresso */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className={cn(APP_CARD_BASE, "order-4 p-6")}>
         <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
             <CalendarCheck size={18} />
@@ -5230,7 +5174,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
                 )}
                 <button
                   onClick={() => setTab("diagnostico")}
-                  className="mt-3 flex w-full items-center justify-between rounded-xl bg-card/80 px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-primary shadow-sm active:scale-[0.98]"
+                  className={cn(APP_CARD_INNER_INTERACTIVE, "mt-3 flex w-full items-center justify-between px-3 py-2.5 text-xs font-bold uppercase tracking-wider text-primary")}
                 >
                   <span>Acessar detalhes do diagnóstico</span>
                   <ChevronRight size={16} />
@@ -5266,13 +5210,13 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             onClick={() => setTab("plano")}
-            className="rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm active:scale-[0.98]"
+            className="rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 active:scale-[0.98]"
           >
             Ver meu plano
           </button>
           <button
             onClick={() => setTab("resumo")}
-            className="rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+            className="rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/20 transition-colors hover:bg-primary/90"
           >
             Ver resumo completo
           </button>
@@ -5307,7 +5251,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
                   </div>
                   <button
                     onClick={() => goToDay(d)}
-                    className="min-w-0 flex-1 rounded-xl border border-border bg-card px-3 py-2 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
+                    className={cn(APP_CARD_INNER_INTERACTIVE, "min-w-0 flex-1 px-3 py-2 text-left")}
                   >
                     <div className="text-[10px] font-bold uppercase tracking-widest text-accent">{label}</div>
                     <div className="mt-0.5 truncate text-sm font-semibold text-foreground">Dia {d}</div>
@@ -5328,7 +5272,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
       </div>
 
       {/* Hoje — Resumo do dia atual */}
-      <div className="rounded-2xl border border-primary/20 bg-card p-6 shadow-sm">
+      <div className={cn(APP_CARD_FEATURED, "order-2 p-6")}>
         <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
             <Sparkles size={18} />
@@ -5344,7 +5288,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
         )}
 
         {todayChecklist.length > 0 && (
-          <div className="mt-4 rounded-xl border border-border bg-muted/30 p-4">
+          <div className={cn(APP_CARD_INNER, "mt-4 p-4")}>
             <div className="flex items-center justify-between text-xs font-semibold text-foreground">
               <span>Checklist do dia</span>
               <span className="text-muted-foreground">{todayDoneCount}/{todayChecklist.length}</span>
@@ -5365,7 +5309,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
 
         <button
           onClick={() => goToDay(focusDay)}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm active:scale-[0.98]"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm shadow-accent/20 active:scale-[0.98]"
         >
           Abrir tarefa de hoje
           <ArrowRight size={16} />
@@ -5374,13 +5318,13 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
 
       {/* Próximos passos */}
       {upcomingDays.length > 0 && (
-        <div className="rounded-2xl border-2 border-accent/40 bg-gradient-to-br from-accent/10 via-card to-card p-6 shadow-[0_10px_30px_-15px_rgba(217,70,239,0.35)] ring-1 ring-accent/10">
+        <div className={cn(APP_CARD_GREEN_FEATURED, "order-3 p-6")}>
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-accent/15 text-accent shadow-sm">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/15 text-primary shadow-sm">
               <CalendarCheck size={18} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-accent">Em destaque</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-primary">Em destaque</div>
               <h2 className="font-display text-lg text-primary">Próximos passos</h2>
               <p className="text-xs text-muted-foreground">Atalhos para os próximos dias do protocolo</p>
             </div>
@@ -5393,19 +5337,19 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
                 <li key={d}>
                   <button
                     onClick={() => goToDay(d)}
-                    className="group flex w-full items-center gap-3 rounded-xl border border-accent/25 bg-card/80 px-4 py-3 text-left transition-all hover:border-accent/50 hover:bg-accent/5 hover:shadow-sm"
+                    className={cn(APP_CARD_INNER_INTERACTIVE, "group flex w-full items-center gap-3 px-4 py-3 text-left")}
                   >
-                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-accent/15 font-display text-sm font-bold text-accent">
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/15 font-display text-sm font-bold text-primary">
                       {d}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-accent">
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-primary">
                         <span>Dia {d} · Fase {meta.phase}</span>
-                        <span className="rounded-full bg-accent/15 px-1.5 py-0.5 text-accent">Foco</span>
+                        <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-primary">Foco</span>
                       </div>
                       <div className="mt-0.5 truncate text-sm font-semibold text-foreground">{meta.title}</div>
                     </div>
-                    <ArrowRight size={16} className="shrink-0 text-accent/60 transition-transform group-hover:translate-x-0.5 group-hover:text-accent" />
+                    <ArrowRight size={16} className="shrink-0 text-primary/60 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                   </button>
                 </li>
               );
@@ -5415,7 +5359,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
       )}
 
       {/* Cadastro da Planta */}
-      <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm">
+      <div className={cn(APP_CARD_BASE, "order-5 overflow-hidden")}>
         {!showPlantForm ? (
           <div className="p-6">
             <div className="flex items-center justify-between">
@@ -5470,7 +5414,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
             )}
 
             {plant.name.trim() && (
-              <div className="mt-5 flex items-center gap-4 rounded-xl border border-border bg-muted/20 p-4">
+              <div className={cn(APP_CARD_INNER, "mt-5 flex items-center gap-4 p-4")}>
                 <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-primary/5">
                   {plant.photo ? (
                     <img src={plant.photo} alt={plant.name} className="h-full w-full object-cover" />
@@ -5603,7 +5547,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
                 setShowPlantForm(false);
               }}
               disabled={!plant.name.trim()}
-              className="mt-8 w-full rounded-full bg-primary px-6 py-3.5 text-base font-semibold text-primary-foreground shadow-sm transition-transform active:scale-[0.98] disabled:opacity-40"
+              className="mt-8 w-full rounded-full bg-accent px-6 py-3.5 text-base font-semibold text-accent-foreground shadow-sm shadow-accent/20 transition-transform active:scale-[0.98] disabled:opacity-40"
             >
               Salvar cadastro
             </button>
@@ -5612,7 +5556,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
       </div>
 
       {/* Preferências */}
-      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <div className={cn(APP_CARD_BASE, "order-6 p-6")}>
         <div className="flex items-center gap-3">
           <div className="grid h-9 w-9 place-items-center rounded-xl bg-accent/10 text-accent">
             <Settings size={18} />
@@ -5624,7 +5568,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
         </div>
 
         <div className="mt-5 space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-4">
+          <div className={cn(APP_CARD_INNER_HOVER, "flex items-center justify-between p-4")}>
             <div className="flex items-center gap-3">
               <div className={cn("grid h-10 w-10 place-items-center rounded-lg transition-colors", state.settings?.muteSounds ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary")}>
                 {state.settings?.muteSounds ? <VolumeX size={20} /> : <Volume2 size={20} />}
@@ -5650,7 +5594,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
             </button>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-4">
+          <div className={cn(APP_CARD_INNER_HOVER, "flex items-center justify-between p-4")}>
             <div className="flex items-center gap-3">
               <div className={cn("grid h-10 w-10 place-items-center rounded-lg transition-colors", state.settings?.hapticsDisabled ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary")}>
                 <Zap size={20} />
@@ -5676,7 +5620,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
             </button>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-4">
+          <div className={cn(APP_CARD_INNER_HOVER, "flex items-center justify-between p-4")}>
             <div className="flex items-center gap-3">
               <div className={cn("grid h-10 w-10 place-items-center rounded-lg transition-colors", state.settings?.focusedMode ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
                 <Wind size={20} />
@@ -5703,7 +5647,7 @@ function MinhaOrquideaTab({ actorId, setTab }: { actorId: string; setTab: (t: Ta
             </button>
           </div>
 
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-4">
+          <div className={cn(APP_CARD_INNER_HOVER, "flex items-center justify-between p-4")}>
             <div className="flex items-center gap-3">
               <div className={cn("grid h-10 w-10 place-items-center rounded-lg transition-colors", state.settings?.highContrast ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground")}>
                 <Sparkles size={20} />
