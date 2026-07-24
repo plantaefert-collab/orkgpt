@@ -1922,6 +1922,7 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
   const phase = phaseOf(day);
   const isApplicationDay = APPLICATION_DAYS.includes(day);
   const diagnosisFresh = isDiagnosisCurrent(state);
+  const hasPlant = !!state.plant.name?.trim();
 
   // Mantém state.currentDay sincronizado com o foco real do usuário
   // para que ao abrir o plano ele já esteja no dia correto.
@@ -1977,26 +1978,11 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
 
   return (
     <div className="space-y-4">
-      {(() => {
-        const meta = getProtocolDay(day);
-        const today = state.days[day] ?? { checklist: {}, note: "", completed: false };
-        const checklistState = today.checklist ?? {};
-        const pendingChecklist = meta.checklist
-          .map((label, i) => ({ label, i, done: !!checklistState[label] }))
-          .filter((c) => !c.done);
-        const nextItems = pendingChecklist.slice(0, 3);
-        const allDone = pendingChecklist.length === 0;
+      {/* Mantém o próximo passo no topo enquanto o cadastro ou o diagnóstico estiver pendente. */}
+      {(!hasPlant || !diagnosisFresh) && (() => {
+        const isMissingPlant = !hasPlant;
 
-        // Detecta estado contextual do usuário
-        const hasPlant = !!state.plant.name?.trim();
-        const applicationPending = isApplicationDay && !today.applicationDone;
-        const protocolFinished = day >= 21 && allDone;
-
-        // Se o usuário não tem planta OU o diagnóstico não está atualizado, exibe o card único de onboarding
-        if (!hasPlant || !diagnosisFresh) {
-          const isMissingPlant = !hasPlant;
-          
-          return (
+        return (
             <div
               role="button"
               tabIndex={0}
@@ -2050,104 +2036,6 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
               {/* Efeito visual de destaque */}
               <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-accent/10 blur-2xl transition-all group-hover:bg-accent/20" />
             </div>
-          );
-        }
-
-        // Caso contrário (usuário já cadastrado), exibe o resumo do dia padrão
-        return (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={handleRedirectToPlan}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRedirectToPlan(); }}
-            className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/40 active:scale-[0.99]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-primary">
-                <Calendar size={14} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Resumo do dia {day}</span>
-              </div>
-              <ChevronRight size={16} className="text-primary/40 transition-transform group-hover:translate-x-1" />
-            </div>
-            <h3 className="mt-2 font-display text-2xl leading-tight text-primary">
-              {hasPendencies ? "Você tem pendências" : "Dia em dia"}
-            </h3>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-primary/[0.04] p-3 text-center">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tarefas</div>
-                <div className="mt-1 font-display text-2xl text-primary">
-                  {doneTasks}<span className="text-primary/40">/{totalTasks || "—"}</span>
-                </div>
-              </div>
-              <div className="rounded-xl bg-accent/[0.08] p-3 text-center">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Aplicações</div>
-                <div className="mt-1 font-display text-2xl text-accent">{appsDoneToday}</div>
-              </div>
-              <div className="rounded-xl bg-primary/[0.04] p-3 text-center">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Registro</div>
-                <div className="mt-1 font-display text-2xl text-primary">{noteDone ? "✓" : "—"}</div>
-              </div>
-            </div>
-            {(!noteDone || !photoDone) && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {!noteDone && (
-                  <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-accent">
-                    Registro pendente
-                  </span>
-                )}
-                {!photoDone && (
-                  <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-accent">
-                    Foto pendente
-                  </span>
-                )}
-              </div>
-            )}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                playInteractionSound();
-                handleRedirectToPlan();
-                setTimeout(() => {
-                  const registerEl = document.querySelector('[data-register-field]');
-                  if (registerEl) {
-                    registerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    setTimeout(() => {
-                      const input = registerEl.querySelector('textarea');
-                      if (input) input.focus({ preventScroll: true });
-                    }, 500);
-                  }
-                }, 100);
-
-              }}
-              className="mt-4 flex w-full items-center justify-between rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/10 active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-2">
-                <BookOpen size={16} />
-                <span>Escrever registro do dia</span>
-              </div>
-              <ChevronRight size={16} className="opacity-40" />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (dayFullyDone) return;
-                handleCompleteDay();
-              }}
-              disabled={dayFullyDone}
-              className={cn(
-                "mt-2 flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all active:scale-[0.98]",
-                dayFullyDone
-                  ? "cursor-not-allowed border border-primary/20 bg-primary/[0.06] text-primary/60"
-                  : "border border-primary bg-primary text-primary-foreground shadow-md hover:bg-primary/90",
-              )}
-            >
-              <div className="flex items-center gap-2">
-                <CheckCircle2 size={16} />
-                <span>{dayFullyDone ? `Dia ${day} concluído` : "Concluir meu dia"}</span>
-              </div>
-              {!dayFullyDone && <ChevronRight size={16} className="opacity-70" />}
-            </button>
-          </div>
         );
       })()}
 
@@ -2557,6 +2445,102 @@ function InicioTab({ actorId, setTab, setStatus }: { actorId: string; setTab: (t
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Resumo do dia — reposicionado após os lembretes importantes. */}
+          {hasPlant && diagnosisFresh && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={handleRedirectToPlan}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRedirectToPlan(); }}
+              className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm transition-all hover:border-primary/40 active:scale-[0.99]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-primary">
+                  <Calendar size={14} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">Resumo do dia {day}</span>
+                </div>
+                <ChevronRight size={16} className="text-primary/40 transition-transform group-hover:translate-x-1" />
+              </div>
+              <h3 className="mt-2 font-display text-2xl leading-tight text-primary">
+                {hasPendencies ? "Você tem pendências" : "Dia em dia"}
+              </h3>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-primary/[0.04] p-3 text-center">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Tarefas</div>
+                  <div className="mt-1 font-display text-2xl text-primary">
+                    {doneTasks}<span className="text-primary/40">/{totalTasks || "—"}</span>
+                  </div>
+                </div>
+                <div className="rounded-xl bg-accent/[0.08] p-3 text-center">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Aplicações</div>
+                  <div className="mt-1 font-display text-2xl text-accent">{appsDoneToday}</div>
+                </div>
+                <div className="rounded-xl bg-primary/[0.04] p-3 text-center">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Registro</div>
+                  <div className="mt-1 font-display text-2xl text-primary">{noteDone ? "✓" : "—"}</div>
+                </div>
+              </div>
+              {(!noteDone || !photoDone) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {!noteDone && (
+                    <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-accent">
+                      Registro pendente
+                    </span>
+                  )}
+                  {!photoDone && (
+                    <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-accent">
+                      Foto pendente
+                    </span>
+                  )}
+                </div>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  playInteractionSound();
+                  handleRedirectToPlan();
+                  setTimeout(() => {
+                    const registerEl = document.querySelector('[data-register-field]');
+                    if (registerEl) {
+                      registerEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      setTimeout(() => {
+                        const input = registerEl.querySelector('textarea');
+                        if (input) input.focus({ preventScroll: true });
+                      }, 500);
+                    }
+                  }, 100);
+                }}
+                className="mt-4 flex w-full items-center justify-between rounded-xl border border-primary/20 bg-primary/[0.04] px-4 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/10 active:scale-[0.98]"
+              >
+                <div className="flex items-center gap-2">
+                  <BookOpen size={16} />
+                  <span>Escrever registro do dia</span>
+                </div>
+                <ChevronRight size={16} className="opacity-40" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (dayFullyDone) return;
+                  handleCompleteDay();
+                }}
+                disabled={dayFullyDone}
+                className={cn(
+                  "mt-2 flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-bold transition-all active:scale-[0.98]",
+                  dayFullyDone
+                    ? "cursor-not-allowed border border-primary/20 bg-primary/[0.06] text-primary/60"
+                    : "border border-primary bg-primary text-primary-foreground shadow-md hover:bg-primary/90",
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={16} />
+                  <span>{dayFullyDone ? `Dia ${day} concluído` : "Concluir meu dia"}</span>
+                </div>
+                {!dayFullyDone && <ChevronRight size={16} className="opacity-70" />}
+              </button>
             </div>
           )}
 
