@@ -94,6 +94,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "PlantaeFert — Guia Prático para Orquídeas Floridas em 21 Dias" },
       { name: "twitter:description", content: "Método de 2 Passos + protocolo guiado de 21 dias para diagnosticar, enraizar e nutrir sua orquídea. Comece grátis." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4231c2a1-aad9-429d-9cb1-2e34a40d63c8/id-preview-661fb9c0--cce65659-ca75-4749-86cd-404cc1252ca6.lovable.app-1784907015934.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/4231c2a1-aad9-429d-9cb1-2e34a40d63c8/id-preview-661fb9c0--cce65659-ca75-4749-86cd-404cc1252ca6.lovable.app-1784907015934.png" },
     ],
     links: [
       {
