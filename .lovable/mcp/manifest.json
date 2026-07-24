@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://spjdanwtpuhgbiixiwoy.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "orquideas-floridas-mcp",
+      "version": "0.1.0",
+      "title": "Guia Orquídeas Floridas"
+    },
+    "tools": [
+      {
+        "name": "get_my_plant",
+        "title": "Ver minha orquídea",
+        "description": "Retorna o perfil da orquídea cadastrada pelo usuário autenticado (nome, espécie, local, vaso, substrato, dificuldade).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_my_progress",
+        "title": "Ver meu progresso",
+        "description": "Retorna o progresso do protocolo de 21 dias do usuário autenticado: dia atual, tarefas concluídas, aplicações registradas, respostas e resultado do diagnóstico.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "set_current_day",
+        "title": "Definir dia atual do protocolo",
+        "description": "Atualiza o dia atual (1 a 21) do protocolo do usuário autenticado. Use quando o usuário disser em que dia está.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": true,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "day": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 21,
+              "description": "Dia atual do protocolo (1 a 21)."
+            }
+          },
+          "required": [
+            "day"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
