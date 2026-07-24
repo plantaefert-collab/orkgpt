@@ -1,5 +1,4 @@
 // 21-day orchid care protocol: https://guia02.lovable.app/inicio
-// Consegue fazer uma auditoria completa no site?
 import { useState, useEffect, useRef } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
