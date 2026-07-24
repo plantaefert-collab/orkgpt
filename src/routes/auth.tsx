@@ -4,6 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { resolvePostAuthDestination } from "@/lib/auth-destination";
 
+function readPendingNext(): string | undefined {
+  try {
+    const value = sessionStorage.getItem("pf_oauth_next");
+    if (value) {
+      sessionStorage.removeItem("pf_oauth_next");
+      return value;
+    }
+  } catch {}
+  return undefined;
+}
+
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     next: typeof search.next === "string" ? search.next : undefined,
@@ -23,7 +34,8 @@ function AuthPage() {
   const { next } = Route.useSearch();
 
   async function resolveDestination(userId: string) {
-    return resolvePostAuthDestination(userId, { explicitRedirect: next });
+    const pendingNext = readPendingNext();
+    return resolvePostAuthDestination(userId, { explicitRedirect: next ?? pendingNext });
   }
 
   useEffect(() => {
